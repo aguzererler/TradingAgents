@@ -1176,5 +1176,42 @@ def analyze():
     run_analysis()
 
 
+def run_scan():
+    console.print(Panel("[bold green]Global Macro Scanner[/bold green]", border_style="green"))
+    default_date = datetime.datetime.now().strftime("%Y-%m-%d")
+    scan_date = typer.prompt("Scan date (YYYY-MM-DD)", default=default_date)
+    console.print(f"[cyan]Scanning market data for {scan_date}...[/cyan]")
+
+    from tradingagents.dataflows.interface import route_to_vendor
+
+    save_dir = Path("results/macro_scan") / scan_date
+    save_dir.mkdir(parents=True, exist_ok=True)
+
+    sections = [
+        ("1. Market Movers", "get_market_movers", ["day_gainers"], "market_movers.txt"),
+        ("2. Market Indices", "get_market_indices", [], "market_indices.txt"),
+        ("3. Sector Performance", "get_sector_performance", [], "sector_performance.txt"),
+        ("4. Industry Performance (Technology)", "get_industry_performance", ["technology"], "industry_performance.txt"),
+        ("5. Topic News (Market)", "get_topic_news", ["market"], "topic_news.txt"),
+    ]
+
+    for title, method, args, filename in sections:
+        console.print(f"[bold]{title}[/bold]")
+        try:
+            result = route_to_vendor(method, *args)
+            (save_dir / filename).write_text(result)
+        except Exception as e:
+            result = f"Error fetching {title}: {e}"
+            console.print(f"[red]{result}[/red]")
+        console.print(result[:500] + "..." if len(result) > 500 else result)
+
+    console.print(f"[green]Results saved to {save_dir}[/green]")
+
+
+@app.command()
+def scan():
+    run_scan()
+
+
 if __name__ == "__main__":
     app()

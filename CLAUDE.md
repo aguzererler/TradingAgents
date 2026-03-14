@@ -4,6 +4,16 @@
 
 Multi-agent LLM trading framework using LangGraph for financial analysis and decision making.
 
+## Development Environment
+
+**Conda Environment**: `tradingagents`
+
+Before starting any development work, activate the conda environment:
+
+```bash
+conda activate tradingagents
+```
+
 ## Architecture
 
 - **Agent Factory Pattern**: `create_X(llm)` → closure pattern
