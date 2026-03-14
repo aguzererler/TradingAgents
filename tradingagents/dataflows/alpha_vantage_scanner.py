@@ -69,7 +69,7 @@ def get_market_movers_alpha_vantage(
                 try:
                     price = f"${float(price):.2f}"
                 except ValueError:
-                    pass
+                    price = "N/A"
             if isinstance(change_pct, str):
                 change_pct = change_pct.rstrip('%')
             if isinstance(change_pct, (int, float)):
@@ -78,7 +78,7 @@ def get_market_movers_alpha_vantage(
                 try:
                     volume = f"{int(volume):,}"
                 except ValueError:
-                    pass
+                    volume = "N/A"
 
             result_str += f"| {symbol} | {price} | {change_pct} | {volume} |\n"
 

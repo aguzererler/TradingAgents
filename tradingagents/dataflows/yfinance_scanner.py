@@ -98,7 +98,9 @@ def get_market_indices_yfinance() -> str:
         result_str += "| Index | Current Price | Change | Change % | 52W High | 52W Low |\n"
         result_str += "|-------|---------------|--------|----------|----------|----------|\n"
 
-        # Batch download historical price data to avoid N+1 calls
+        # Batch download historical price data to avoid N+1 calls.
+        # yf.download() always returns multi-level columns when multiple symbols
+        # are requested (group_by="ticker"), so we access hist_batch[symbol].
         symbols = list(indices.keys())
         hist_batch = yf.download(
             symbols,
@@ -113,11 +115,13 @@ def get_market_indices_yfinance() -> str:
                 ticker = yf.Ticker(symbol)
                 info = ticker.info
 
-                # Extract from batch download
-                if len(symbols) > 1 and symbol in hist_batch.columns.get_level_values(0):
+                # Extract per-symbol slice from the batched result.
+                # With multiple symbols and group_by="ticker", the columns are
+                # a MultiIndex keyed by symbol.
+                try:
                     hist = hist_batch[symbol].dropna()
-                else:
-                    hist = hist_batch.dropna() if len(symbols) == 1 else ticker.history(period="1d")
+                except KeyError:
+                    hist = ticker.history(period="1d")
 
                 if hist.empty:
                     result_str += f"| {name} | No data | - | - | - | - |\n"

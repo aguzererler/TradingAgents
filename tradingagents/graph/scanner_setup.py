@@ -65,7 +65,9 @@ class ScannerGraphSetup:
         workflow.add_edge(START, "market_movers_scanner")
         workflow.add_edge(START, "sector_scanner")
 
-        # Fan-in: all 3 scanners must complete before industry deep dive
+        # Fan-in: LangGraph's StateGraph guarantees that industry_deep_dive
+        # only executes after ALL three predecessor nodes have completed and
+        # their state updates have been merged.
         workflow.add_edge("geopolitical_scanner", "industry_deep_dive")
         workflow.add_edge("market_movers_scanner", "industry_deep_dive")
         workflow.add_edge("sector_scanner", "industry_deep_dive")
