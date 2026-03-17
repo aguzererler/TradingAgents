@@ -87,7 +87,7 @@ OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama
 - Graph setup (scanner): `tradingagents/graph/scanner_setup.py`
 - Inline tool loop: `tradingagents/agents/utils/tool_runner.py`
 
-## Critical Patterns (from past mistakes)
+## Critical Patterns (see `docs/agent/decisions/008-lessons-learned.md` for full details)
 
 - **Tool execution**: Trading graph uses `ToolNode` in graph. Scanner agents use `run_tool_loop()` inline. If `bind_tools()` is used, there MUST be a tool execution path.
 - **yfinance DataFrames**: `top_companies` has ticker as INDEX, not column. Always check `.index` and `.columns`.
@@ -99,15 +99,17 @@ OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama
 - **Rate limiter locks**: Never hold a lock during `sleep()` or IO. Release, sleep, re-acquire.
 - **Config fallback keys**: `llm_provider` and `backend_url` must always exist at top level — `scanner_graph.py` and `trading_graph.py` use them as fallbacks.
 
-## Project Tracking (Memory System)
+## Agentic Memory (docs/agent/)
 
-Do NOT write to `DECISIONS.md`, `MISTAKES.md`, or `PROGRESS.md`. Use the memory system instead:
+Agent workflows use the `docs/agent/` scaffold for structured memory:
 
-- **Decisions**: Use `/remember` to record architecture decisions (vendor strategy, LLM setup, tool execution)
-- **Progress**: Use `/remember` to record feature progress, what works, TODOs
-- **Mistakes**: Use `/remember` to record bugs and lessons learned
+- `docs/agent/CURRENT_STATE.md` — Live state tracker (milestone, progress, blockers). Read at session start.
+- `docs/agent/decisions/` — Architecture decision records (ADR-style, numbered `001-...`)
+- `docs/agent/plans/` — Implementation plans with checkbox progress tracking
+- `docs/agent/logs/` — Agent run logs
+- `docs/agent/templates/` — Commit, PR, and decision templates
 
-A `PreToolUse` hook enforces this — writes to those files are automatically blocked.
+Before starting work, always read `docs/agent/CURRENT_STATE.md`. Before committing, update it.
 
 ## LLM Configuration
 
