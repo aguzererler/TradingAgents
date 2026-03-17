@@ -220,7 +220,7 @@ __marimo__/
 
 # Scan results and execution plans (generated artifacts)
 results/
-plans/
+/plans/
 
 # Backup files
 *.backup
