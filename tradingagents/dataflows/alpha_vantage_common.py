@@ -94,7 +94,15 @@ def _rate_limited_request(function_name: str, params: dict, timeout: int = 30) -
     if sleep_time > 0:
         _time.sleep(sleep_time)
 
+    # Re-check and register under lock to avoid races where multiple
+    # threads calculate similar sleep times and then all fire at once.
     with _rate_lock:
+        now = _time.time()
+        _call_timestamps[:] = [t for t in _call_timestamps if now - t < 60]
+        if len(_call_timestamps) >= _RATE_LIMIT:
+            # Another thread filled the window while we slept — wait again
+            extra_sleep = 60 - (now - _call_timestamps[0]) + 0.1
+            _time.sleep(extra_sleep)
         _call_timestamps.append(_time.time())
 
     return _make_api_request(function_name, params, timeout=timeout)
