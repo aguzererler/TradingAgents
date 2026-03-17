@@ -1,5 +1,23 @@
 # TradingAgents Framework - Project Knowledge
 
+## Architecture-First Reading Protocol
+
+Before writing any code, modifying configurations, or proposing solutions, you MUST follow the Architecture-First Reading Protocol. This ensures you understand the established architectural rules and the current state of the project.
+
+### Mandatory Reading Sequence
+
+1. **Read `docs/agent/CURRENT_STATE.md`** — Grasp the immediate milestone and any active blockers. Do not start work until you understand the current context.
+2. **Query `docs/agent/decisions/`** — Search for ADR files relevant to your current task. Pay special attention to the `Consequences & Constraints` and `Actionable Rules` sections. Treat these rules as absolute laws.
+3. **Check `docs/agent/plans/`** — Identify if there is an active plan related to your task. Do not skip steps unless explicitly instructed.
+
+### Conflict Resolution
+
+If a user request violates a rule in `docs/agent/decisions/`, **STOP**. Inform the user of the conflict, quote the specific rule, and ask whether to proceed with an exception or update the decision file.
+
+### Execution Trigger
+
+Begin your first response to any new technical task by listing the decision files or plans you reviewed (e.g., *"I have reviewed `CURRENT_STATE.md` and `decisions/0002-data-vendor-fallback.md`. I will proceed with..."*).
+
 ## Project Overview
 
 Multi-agent LLM trading framework using LangGraph for financial analysis and decision making.
@@ -101,7 +119,10 @@ OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama
 
 ## Project Tracking Files
 
-- `DECISIONS.md` — Architecture decision records (vendor strategy, LLM setup, tool execution, env overrides)
+- `docs/agent/CURRENT_STATE.md` — Current project state, active milestone, blockers, and TODOs
+- `docs/agent/decisions/` — Individual Architecture Decision Records (ADRs) with YAML frontmatter, `Consequences & Constraints`, and `Actionable Rules`
+- `docs/agent/plans/` — Active implementation plans
+- `DECISIONS.md` — Legacy architecture decisions log (canonical source now in `docs/agent/decisions/`)
 - `PROGRESS.md` — Feature progress, what works, TODOs
 - `MISTAKES.md` — Past bugs and lessons learned (10 documented mistakes)
 
