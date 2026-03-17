@@ -64,8 +64,8 @@ def _extract_top_sectors(sector_report: str, top_n: int = 3) -> list[str]:
         if sector_name in ("sector", "---", "") or "---" in sector_name:
             continue
         # Try to parse the 1-month column (index 3)
-        month_str = cols[3].replace("%", "").replace("+", "").strip()
         try:
+            month_str = cols[3].replace("%", "").replace("+", "").strip()
             month_val = float(month_str)
         except (ValueError, IndexError):
             continue
