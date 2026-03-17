@@ -122,7 +122,7 @@ OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama
 - `docs/agent/CURRENT_STATE.md` — Current project state, active milestone, blockers, and TODOs
 - `docs/agent/decisions/` — Individual Architecture Decision Records (ADRs) with YAML frontmatter, `Consequences & Constraints`, and `Actionable Rules`
 - `docs/agent/plans/` — Active implementation plans
-- `DECISIONS.md` — Legacy architecture decisions log (canonical source now in `docs/agent/decisions/`)
+- `DECISIONS.md` — Legacy architecture decisions log (kept for history; canonical source is now `docs/agent/decisions/`)
 - `PROGRESS.md` — Feature progress, what works, TODOs
 - `MISTAKES.md` — Past bugs and lessons learned (10 documented mistakes)
 

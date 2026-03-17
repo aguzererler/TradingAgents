@@ -2,7 +2,7 @@
 title: .env Loading Strategy
 date: 2026-03-17
 status: superseded
-superseded_by: "0008-env-var-config-overrides.md"
+superseded_by: ADR-0008
 tags: [configuration, dotenv, environment]
 ---
 
