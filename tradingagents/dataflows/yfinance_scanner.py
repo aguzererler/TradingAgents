@@ -305,7 +305,8 @@ def get_industry_performance_yfinance(
         
         # top_companies has ticker as the DataFrame index (index.name == 'symbol')
         # Columns: name, rating, market weight
-        for symbol, row in top_companies.head(20).iterrows():
+        # Display only the tickers we downloaded prices for to avoid N/A gaps
+        for symbol, row in top_companies.head(10).iterrows():
             name = row.get('name', 'N/A')
             rating = row.get('rating', 'N/A')
             market_weight = row.get('market weight', None)
