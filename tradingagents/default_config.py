@@ -14,7 +14,7 @@ DEFAULT_CONFIG = {
     "quick_think_llm": "gpt-5-mini",
     "backend_url": "https://api.openai.com/v1",
     # Per-role provider overrides (fall back to llm_provider / backend_url when None)
-    "deep_think_llm_provider": None,    # e.g. "google", "anthropic", "openai"
+    "deep_think_llm_provider": None,    # e.g. "google", "anthropic", "openrouter"
     "deep_think_backend_url": None,     # override backend URL for deep-think model
     "mid_think_llm_provider": None,     # e.g. "ollama"
     "mid_think_backend_url": None,      # override backend URL for mid-think model
