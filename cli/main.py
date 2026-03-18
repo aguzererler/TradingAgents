@@ -28,6 +28,7 @@ from rich.align import Align
 from rich.rule import Rule
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
+from tradingagents.report_paths import get_daily_dir, get_market_dir, get_ticker_dir
 from tradingagents.default_config import DEFAULT_CONFIG
 from cli.models import AnalystType
 from cli.utils import *
@@ -943,7 +944,7 @@ def run_analysis():
     start_time = time.time()
 
     # Create result directory
-    results_dir = Path(config["results_dir"]) / selections["ticker"] / selections["analysis_date"]
+    results_dir = get_ticker_dir(selections["analysis_date"], selections["ticker"])
     results_dir.mkdir(parents=True, exist_ok=True)
     report_dir = results_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
@@ -1156,8 +1157,7 @@ def run_analysis():
     # Prompt to save report
     save_choice = typer.prompt("Save report?", default="Y").strip().upper()
     if save_choice in ("Y", "YES", ""):
-        timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        default_path = Path.cwd() / "reports" / f"{selections['ticker']}_{timestamp}"
+        default_path = get_ticker_dir(selections["analysis_date"], selections["ticker"])
         save_path_str = typer.prompt(
             "Save path (press Enter for default)",
             default=str(default_path)
@@ -1186,7 +1186,7 @@ def run_scan(date: Optional[str] = None):
         scan_date = typer.prompt("Scan date (YYYY-MM-DD)", default=default_date)
 
     # Prepare save directory
-    save_dir = Path("results/macro_scan") / scan_date
+    save_dir = get_market_dir(scan_date)
     save_dir.mkdir(parents=True, exist_ok=True)
 
     console.print(f"[cyan]Running 3-phase macro scanner for {scan_date}...[/cyan]")
@@ -1290,7 +1290,7 @@ def run_pipeline():
         return
 
     config = DEFAULT_CONFIG.copy()
-    output_dir = Path("results/macro_pipeline")
+    output_dir = get_daily_dir(analysis_date)
 
     console.print(f"\n[cyan]Running TradingAgents for {len(candidates)} tickers...[/cyan]")
     try:
