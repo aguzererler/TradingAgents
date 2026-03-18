@@ -126,7 +126,7 @@ git log --oneline -20
 - **Rule**: Extension guides must list every file that needs modification.
 
 #### TECH_STACK.md
-- **Source**: `pyproject.toml`, any `requirements*.txt` files, `.env.example`, LLM client modules discovered via `find tradingagents/llm_clients -name "*.py"`
+- **Source**: `pyproject.toml`, any `requirements*.txt` files, `.env.example`, LLM client modules discovered via filesystem traversal of any `llm_clients/` or provider adapter directories
 - **Extract**:
   - Core dependency table (package → purpose → notes)
   - External API table (service → auth → rate limit → primary use)
