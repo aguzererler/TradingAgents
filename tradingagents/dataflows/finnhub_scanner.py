@@ -30,6 +30,17 @@ from .finnhub_common import (
 # Maximum length for error messages embedded in table cells / log lines
 _MAX_ERROR_LEN = 60
 
+
+def _safe_fmt(value, fmt: str = "${:.2f}", fallback: str = "N/A") -> str:
+    """Safely format a numeric value, returning *fallback* on None or bad types."""
+    if value is None:
+        return fallback
+    try:
+        return fmt.format(float(value))
+    except (ValueError, TypeError):
+        return str(value)
+
+
 # Representative S&P 500 large-caps used as the movers basket.
 # Sorted roughly by market-cap weight — first 50 cover the bulk of the index.
 _SP500_SAMPLE: list[str] = [
@@ -401,21 +412,13 @@ def get_earnings_calendar_finnhub(from_date: str, to_date: str) -> str:
         symbol = item.get("symbol", "N/A")
         company = item.get("company", "N/A")[:30]
         date = item.get("date", "N/A")
-        eps_est = item.get("epsEstimate", None)
-        eps_prior = item.get("epsPrior", None)
-        rev_est = item.get("revenueEstimate", None)
-        try:
-            eps_est_s = f"${float(eps_est):.2f}" if eps_est is not None else "N/A"
-        except (ValueError, TypeError):
-            eps_est_s = str(eps_est)
-        try:
-            eps_prior_s = f"${float(eps_prior):.2f}" if eps_prior is not None else "N/A"
-        except (ValueError, TypeError):
-            eps_prior_s = str(eps_prior)
-        try:
-            rev_est_s = f"${float(rev_est)/1e9:.2f}B" if rev_est is not None else "N/A"
-        except (ValueError, TypeError, ZeroDivisionError):
-            rev_est_s = str(rev_est)
+        eps_est_s = _safe_fmt(item.get("epsEstimate"))
+        eps_prior_s = _safe_fmt(item.get("epsPrior"))
+        rev_raw = item.get("revenueEstimate")
+        rev_est_s = _safe_fmt(
+            float(rev_raw) / 1e9 if rev_raw is not None else None,
+            fmt="${:.2f}B",
+        )
         lines.append(f"| {symbol} | {company} | {date} | {eps_est_s} | {eps_prior_s} | {rev_est_s} |")
     return "\n".join(lines)
 
