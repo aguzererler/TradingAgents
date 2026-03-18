@@ -21,7 +21,7 @@
 - **Trading graph**: `ToolNode` in graph (agent → tool_node → agent routing loop)
 - **Scanner agents**: `run_tool_loop()` in `tradingagents/agents/utils/tool_runner.py`
   - Max 5 tool rounds per invocation
-  - Nudge mechanism: if first response has no `tool_calls` and is under 500 chars, appends a `HumanMessage` nudge (fires once only)
+  - Nudge mechanism: if first response has no `tool_calls` and is under 2000 chars (`MIN_REPORT_LENGTH`), appends a `HumanMessage` nudge (fires once only)
 
 ## Vendor Routing
 

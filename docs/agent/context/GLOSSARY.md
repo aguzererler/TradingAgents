@@ -11,7 +11,7 @@ Quick reference for project-specific terms, acronyms, and identifiers.
 | **Agent Factory** | `create_X(llm)` pattern that returns a LangGraph-compatible node function |
 | **ToolNode** | LangGraph component that executes tool calls; used in trading graph |
 | **run_tool_loop()** | Inline tool execution in `tool_runner.py`; used by scanner agents |
-| **Nudge** | `HumanMessage` injected when LLM skips tool calls on first response (<500 chars) |
+| **Nudge** | `HumanMessage` injected when LLM skips tool calls on first response (<2000 chars) |
 
 ## Data Layer
 
