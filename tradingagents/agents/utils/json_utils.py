@@ -59,6 +59,7 @@ def extract_json(text: str) -> dict[str, Any]:
         try:
             return _ensure_dict(json.loads(block.strip()))
         except (json.JSONDecodeError, ValueError):
+            # JSONDecodeError = bad JSON; ValueError = parsed but not a dict
             continue
 
     # 4. Find first '{' to last '}'
@@ -68,6 +69,7 @@ def extract_json(text: str) -> dict[str, Any]:
         try:
             return _ensure_dict(json.loads(cleaned[first_brace : last_brace + 1]))
         except (json.JSONDecodeError, ValueError):
+            # JSONDecodeError = bad JSON; ValueError = parsed but not a dict
             pass
 
     raise ValueError(
