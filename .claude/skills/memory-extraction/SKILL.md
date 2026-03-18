@@ -47,8 +47,41 @@ docs/agent/
 2. **Existing ADRs** (`docs/agent/decisions/`) — binding architectural constraints
 3. **Test files** — reveal actual contracts, edge cases, and expected behavior
 4. **Git history** (`git log`, PR descriptions) — reveal evolution and rationale
-5. **Configuration files** (`default_config.py`, `pyproject.toml`, `.env.example`) — reveal settings and dependencies
+5. **Configuration files** (config modules, `pyproject.toml`, `.env.example`) — reveal settings and dependencies
 6. **README.md** — user-facing docs (may be outdated; cross-check with code)
+
+### Source Discovery (dynamic — never hardcode file lists)
+
+The skill and builder agent must **discover** sources at runtime, not rely on static
+file lists. Use these patterns:
+
+```bash
+# Discover all Python source modules
+find tradingagents -name "*.py" -type f
+
+# Discover configuration and build files
+ls pyproject.toml requirements*.txt .env.example 2>/dev/null
+
+# Discover CLI entry points
+find cli -name "*.py" -type f
+
+# Discover test files
+ls tests/
+
+# Discover ADRs
+ls docs/agent/decisions/
+
+# Recent git history
+git log --oneline -20
+```
+
+**High-signal file patterns** (prioritize these when reading discovered files):
+- `*_config*.py`, `default_config.py` — configuration
+- `interface.py`, `*_common.py` — vendor routing and shared utilities
+- `*_graph.py`, `*_setup.py` — workflow orchestration
+- `*_states.py` — LangGraph state definitions
+- `__init__.py` — module exports and public API
+- `tool_runner.py`, `*_tools.py` — tool execution patterns
 
 ### What to Extract per File
 
@@ -58,7 +91,7 @@ docs/agent/
 - **Rule**: Never include historical information older than the last milestone. Keep under 30 lines.
 
 #### ARCHITECTURE.md
-- **Source**: Graph setup files, agent factory files, dataflow interface, config
+- **Source**: Discover graph/workflow files (`*_graph.py`, `*_setup.py`), agent factory files, dataflow interface modules, and config modules via filesystem traversal
 - **Extract**:
   - System description (1 paragraph)
   - Core patterns (agent factory, LLM tiers, vendor routing, graph workflows)
@@ -83,7 +116,7 @@ docs/agent/
 - **Rule**: Use imperative mood ("Use X", "Never do Y", "Always check Z").
 
 #### COMPONENTS.md
-- **Source**: Directory listing, imports in `__init__.py` files, test file organization
+- **Source**: `find` command output for directory tree, `__init__.py` files for module exports, `ls tests/` for test organization
 - **Extract**:
   - Full directory tree (indented, with one-line purpose per file/dir)
   - Extension point guides (how to add: analyst, scanner, vendor, config key)
@@ -93,7 +126,7 @@ docs/agent/
 - **Rule**: Extension guides must list every file that needs modification.
 
 #### TECH_STACK.md
-- **Source**: `pyproject.toml`, `requirements.txt`, `.env.example`, LLM client files
+- **Source**: `pyproject.toml`, any `requirements*.txt` files, `.env.example`, LLM client modules discovered via `find tradingagents/llm_clients -name "*.py"`
 - **Extract**:
   - Core dependency table (package → purpose → notes)
   - External API table (service → auth → rate limit → primary use)

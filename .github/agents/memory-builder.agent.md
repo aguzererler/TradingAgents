@@ -32,21 +32,16 @@ Read the skill file **before** starting any memory work.
 
 1. **Read the skill**: Open `.claude/skills/memory-extraction/SKILL.md` and internalize all rules
 2. **Audit existing files**: List `docs/agent/context/` and note what exists vs what's expected
-3. **Gather sources** (in this order):
+3. **Discover sources dynamically** (do NOT rely on a hardcoded file list — the repo evolves):
    - `docs/agent/CURRENT_STATE.md` — current milestone context
-   - `docs/agent/decisions/*.md` — all active ADRs
-   - Key source files:
-     - `tradingagents/default_config.py`
-     - `tradingagents/dataflows/interface.py`
-     - `tradingagents/graph/trading_graph.py`
-     - `tradingagents/graph/scanner_graph.py`
-     - `tradingagents/graph/scanner_setup.py`
-     - `tradingagents/agents/utils/tool_runner.py`
-     - `tradingagents/agents/utils/agent_states.py`
-     - `tradingagents/agents/utils/scanner_states.py`
-   - `pyproject.toml` and `requirements.txt` — dependencies
-   - `cli/main.py` — CLI structure
-   - `tests/` — test organization
+   - `ls docs/agent/decisions/` — list and read all active ADRs
+   - **Source code discovery**: Use filesystem traversal to find key files:
+     - `find tradingagents -name "*.py" -type f` — discover all Python modules
+     - Focus on `__init__.py`, `*_config*.py`, `interface.py`, `*_graph.py`, `*_setup.py`, `*_states.py` as high-signal entry points
+     - Read directory structures to understand the module layout
+   - **Dependency discovery**: Read `pyproject.toml` and any `requirements*.txt` files
+   - **CLI discovery**: `find cli -name "*.py" -type f`
+   - **Test discovery**: `ls tests/` to find all test files
    - `git log --oneline -20` — recent history
 4. **Write each context file** following the skill's extraction rules and formatting rules
 5. **Verify**: Re-read each file and confirm:
