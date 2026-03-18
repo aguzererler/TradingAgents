@@ -27,6 +27,9 @@ from .finnhub_common import (
 # Constants
 # ---------------------------------------------------------------------------
 
+# Maximum length for error messages embedded in table cells / log lines
+_MAX_ERROR_LEN = 60
+
 # Representative S&P 500 large-caps used as the movers basket.
 # Sorted roughly by market-cap weight — first 50 cover the bulk of the index.
 _SP500_SAMPLE: list[str] = [
@@ -167,7 +170,7 @@ def get_market_movers_finnhub(
                 continue
             rows.append(quote)
         except FinnhubError as exc:
-            errors.append(f"{symbol}: {str(exc)[:60]}")
+            errors.append(f"{symbol}: {str(exc)[:_MAX_ERROR_LEN]}")
 
     if not rows:
         raise FinnhubError(
@@ -246,7 +249,7 @@ def get_market_indices_finnhub() -> str:
             success_count += 1
 
         except FinnhubError as exc:
-            result += f"| {display_name} | Error | - | {str(exc)[:40]} |\n"
+            result += f"| {display_name} | Error | - | {str(exc)[:_MAX_ERROR_LEN]} |\n"
 
     if success_count == 0:
         raise FinnhubError("All market index fetches failed.")
@@ -287,7 +290,7 @@ def get_sector_performance_finnhub() -> str:
 
         except FinnhubError as exc:
             last_error = exc
-            result += f"| {sector_name} | {etf} | Error | {str(exc)[:30]} |\n"
+            result += f"| {sector_name} | {etf} | Error | {str(exc)[:_MAX_ERROR_LEN]} |\n"
 
     # If ALL sectors failed, raise so route_to_vendor can fall back
     if success_count == 0 and last_error is not None:
