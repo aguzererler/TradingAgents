@@ -1,146 +1,47 @@
 # TradingAgents Framework - Project Knowledge
 
-## Project Overview
-
 Multi-agent LLM trading framework using LangGraph for financial analysis and decision making.
 
-## Development Environment
-
-**Conda Environment**: `tradingagents`
-
-Before starting any development work, activate the conda environment:
+## Quick Start
 
 ```bash
 conda activate tradingagents
+pytest tests/ -v                           # Run tests
+python -m cli.main scan --date 2026-03-17  # Run scanner
+python -m cli.main analyze                 # Run per-ticker analysis
 ```
 
-## Architecture
+## Repository Memory System
 
-- **Agent Factory Pattern**: `create_X(llm)` → closure pattern
-- **3-Tier LLM System**:
-  - Quick thinking (fast responses)
-  - Mid thinking (balanced analysis)
-  - Deep thinking (complex reasoning)
-- **Data Vendor Routing**: yfinance (primary), Alpha Vantage (fallback)
-- **Graph-Based Workflows**: LangGraph for agent coordination
+All structured project knowledge lives in `docs/agent/`. Read these files at session start:
 
-## Key Directories
+| File | Purpose | When to Update |
+|------|---------|---------------|
+| `docs/agent/CURRENT_STATE.md` | Live milestone, progress, blockers | Every session |
+| `docs/agent/context/ARCHITECTURE.md` | System design, workflows, data flow | Per milestone |
+| `docs/agent/context/CONVENTIONS.md` | Coding patterns, rules, gotchas | When patterns change |
+| `docs/agent/context/COMPONENTS.md` | File map, extension points, tests | When files are added/moved |
+| `docs/agent/context/TECH_STACK.md` | Dependencies, APIs, providers | When deps change |
+| `docs/agent/context/GLOSSARY.md` | Term definitions, acronyms | When new concepts are added |
+| `docs/agent/decisions/` | Architecture Decision Records (binding) | Append-only |
+| `docs/agent/plans/` | Implementation checklists | Per task |
 
-- `tradingagents/agents/` - Agent implementations
-- `tradingagents/graph/` - Workflow graphs and setup
-- `tradingagents/dataflows/` - Data access layer
-- `cli/` - Command-line interface
+### Skills
 
-## Agent Flow (Existing Trading Analysis)
+| Skill | Location | Purpose |
+|-------|----------|---------|
+| Architecture-First Reading Protocol | `.claude/skills/architecture-coordinator/` | Enforces ADR reading before coding |
+| Memory Extraction & Builder | `.claude/skills/memory-extraction/` | Defines how to extract and write memory files |
 
-1. Analysts (parallel): Fundamentals, Market, News, Social Media
-2. Bull/Bear Debate
-3. Research Manager
-4. Trader
-5. Risk Debate
-6. Risk Judge
+### Builder Agent
 
-## Scanner Flow (New Market-Wide Analysis)
+`.github/agents/memory-builder.agent.md` — Specialized agent for building/refreshing memory files.
 
-```
-START ──┬── Geopolitical Scanner (quick_think) ──┐
-        ├── Market Movers Scanner (quick_think) ──┼── Industry Deep Dive (mid_think) ── Macro Synthesis (deep_think) ── END
-        └── Sector Scanner (quick_think) ─────────┘
-```
+## Critical Rules (see full details in `docs/agent/context/CONVENTIONS.md`)
 
-- Phase 1: Parallel execution of 3 scanners
-- Phase 2: Industry Deep Dive cross-references all outputs
-- Phase 3: Macro Synthesis produces top-10 watchlist
-
-## Data Vendors
-
-- **yfinance** (primary, free): Screener(), Sector(), Industry(), index tickers
-- **Alpha Vantage** (alternative, API key required): TOP_GAINERS_LOSERS endpoint only (fallback for market movers)
-
-## LLM Providers
-
-OpenAI, Anthropic, Google, xAI, OpenRouter, Ollama
-
-## CLI Entry Point
-
-`cli/main.py` with Typer:
-
-- `analyze` (per-ticker analysis)
-- `scan` (new, market-wide scan)
-
-## Configuration
-
-`tradingagents/default_config.py`:
-
-- LLM tiers configuration
-- Vendor routing
-- Debate rounds settings
-- All values overridable via `TRADINGAGENTS_<KEY>` env vars (see `.env.example`)
-
-## Patterns to Follow
-
-- Agent creation (trading): `tradingagents/agents/analysts/news_analyst.py`
-- Agent creation (scanner): `tradingagents/agents/scanners/geopolitical_scanner.py`
-- Tools: `tradingagents/agents/utils/news_data_tools.py`
-- Scanner tools: `tradingagents/agents/utils/scanner_tools.py`
-- Graph setup (trading): `tradingagents/graph/setup.py`
-- Graph setup (scanner): `tradingagents/graph/scanner_setup.py`
-- Inline tool loop: `tradingagents/agents/utils/tool_runner.py`
-
-## Critical Patterns (see `docs/agent/decisions/008-lessons-learned.md` for full details)
-
-- **Tool execution**: Trading graph uses `ToolNode` in graph. Scanner agents use `run_tool_loop()` inline. If `bind_tools()` is used, there MUST be a tool execution path.
-- **yfinance DataFrames**: `top_companies` has ticker as INDEX, not column. Always check `.index` and `.columns`.
-- **yfinance Sector/Industry**: `Sector.overview` has NO performance data. Use ETF proxies for performance.
-- **Vendor fallback**: Functions inside `route_to_vendor` must RAISE on failure, not embed errors in return values. Catch `(AlphaVantageError, ConnectionError, TimeoutError)`, not just `RateLimitError`.
-- **LangGraph parallel writes**: Any state field written by parallel nodes MUST have a reducer (`Annotated[str, reducer_fn]`).
-- **Ollama remote host**: Never hardcode `localhost:11434`. Use configured `base_url`.
-- **.env loading**: `load_dotenv()` runs at module level in `default_config.py` — import-order-independent. Check actual env var values when debugging auth.
-- **Rate limiter locks**: Never hold a lock during `sleep()` or IO. Release, sleep, re-acquire.
-- **Config fallback keys**: `llm_provider` and `backend_url` must always exist at top level — `scanner_graph.py` and `trading_graph.py` use them as fallbacks.
-
-## Agentic Memory (docs/agent/)
-
-Agent workflows use the `docs/agent/` scaffold for structured memory:
-
-- `docs/agent/CURRENT_STATE.md` — Live state tracker (milestone, progress, blockers). Read at session start.
-- `docs/agent/decisions/` — Architecture decision records (ADR-style, numbered `001-...`)
-- `docs/agent/plans/` — Implementation plans with checkbox progress tracking
-- `docs/agent/logs/` — Agent run logs
-- `docs/agent/templates/` — Commit, PR, and decision templates
-
-Before starting work, always read `docs/agent/CURRENT_STATE.md`. Before committing, update it.
-
-## LLM Configuration
-
-Per-tier provider overrides in `tradingagents/default_config.py`:
-- Each tier (`quick_think`, `mid_think`, `deep_think`) can have its own `_llm_provider` and `_backend_url`
-- Falls back to top-level `llm_provider` and `backend_url` when per-tier values are None
-- All config values overridable via `TRADINGAGENTS_<KEY>` env vars
-- Keys for LLM providers: `.env` file (e.g., `OPENROUTER_API_KEY`, `ALPHA_VANTAGE_API_KEY`)
-
-### Env Var Override Convention
-
-```env
-# Pattern: TRADINGAGENTS_<UPPERCASE_KEY>=value
-TRADINGAGENTS_LLM_PROVIDER=openrouter
-TRADINGAGENTS_DEEP_THINK_LLM=deepseek/deepseek-r1-0528
-TRADINGAGENTS_MAX_DEBATE_ROUNDS=3
-TRADINGAGENTS_VENDOR_SCANNER_DATA=alpha_vantage
-```
-
-Empty or unset vars preserve the hardcoded default. `None`-default fields (like `mid_think_llm`) stay `None` when unset, preserving fallback semantics.
-
-## Running the Scanner
-
-```bash
-conda activate tradingagents
-python -m cli.main scan --date 2026-03-17
-```
-
-## Running Tests
-
-```bash
-conda activate tradingagents
-pytest tests/ -v
-```
+- If `bind_tools()` is used → there MUST be a tool execution path
+- Functions in `route_to_vendor` MUST raise on failure (not embed errors)
+- Vendor fallback is opt-in only — `FALLBACK_ALLOWED` whitelist (ADR 011)
+- LangGraph parallel state fields MUST have a reducer
+- Never hold a lock during `sleep()` or IO
+- `llm_provider` and `backend_url` must always exist at top level in config
