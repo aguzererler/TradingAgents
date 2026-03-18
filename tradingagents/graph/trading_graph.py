@@ -30,7 +30,11 @@ from tradingagents.agents.utils.agent_utils import (
     get_income_statement,
     get_news,
     get_insider_transactions,
-    get_global_news
+    get_global_news,
+    get_ttm_analysis,
+    get_peer_comparison,
+    get_sector_relative,
+    get_macro_regime,
 )
 
 from .conditional_logic import ConditionalLogic
@@ -142,10 +146,10 @@ class TradingAgentsGraph:
         # Create tool nodes
         self.tool_nodes = self._create_tool_nodes()
 
-        # Initialize components
+        # Initialize components — wire debate/risk rounds from config
         self.conditional_logic = ConditionalLogic(
-            max_debate_rounds=self.config["max_debate_rounds"],
-            max_risk_discuss_rounds=self.config["max_risk_discuss_rounds"],
+            max_debate_rounds=self.config.get("max_debate_rounds", 2),
+            max_risk_discuss_rounds=self.config.get("max_risk_discuss_rounds", 2),
         )
         self.graph_setup = GraphSetup(
             self.quick_thinking_llm,
@@ -213,6 +217,8 @@ class TradingAgentsGraph:
                     get_stock_data,
                     # Technical indicators
                     get_indicators,
+                    # Macro regime classification
+                    get_macro_regime,
                 ]
             ),
             "social": ToolNode(
@@ -236,6 +242,11 @@ class TradingAgentsGraph:
                     get_balance_sheet,
                     get_cashflow,
                     get_income_statement,
+                    # TTM trend analysis (8 quarters)
+                    get_ttm_analysis,
+                    # Relative performance tools
+                    get_peer_comparison,
+                    get_sector_relative,
                 ]
             ),
         }
@@ -281,6 +292,7 @@ class TradingAgentsGraph:
             "company_of_interest": final_state["company_of_interest"],
             "trade_date": final_state["trade_date"],
             "market_report": final_state["market_report"],
+            "macro_regime_report": final_state.get("macro_regime_report", ""),
             "sentiment_report": final_state["sentiment_report"],
             "news_report": final_state["news_report"],
             "fundamentals_report": final_state["fundamentals_report"],
