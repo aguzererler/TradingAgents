@@ -3,7 +3,8 @@ name: Memory Builder Agent
 description: >
   Builds and maintains the structured repository memory system under docs/agent/context/.
   Strictly follows the memory-extraction skill for format, content, and quality criteria.
-  Invoked to create, refresh, or audit memory files.
+  Invoked to create, refresh, or audit memory files. Covers all subsystems: agents,
+  dataflows, graphs, pipeline, CLI, LLM clients, config, and tests.
 ---
 
 # Memory Builder Agent
@@ -36,26 +37,42 @@ Read the skill file **before** starting any memory work.
    - `docs/agent/CURRENT_STATE.md` — current milestone context
    - `ls docs/agent/decisions/` — list and read all active ADRs
    - **Source code discovery**: Use filesystem traversal to find key files:
-     - `find tradingagents -name "*.py" -type f` — discover all Python modules
-     - Focus on `__init__.py`, `*_config*.py`, `interface.py`, `*_graph.py`, `*_setup.py`, `*_states.py` as high-signal entry points
+     - `find tradingagents -name "*.py" -type f | sort` — discover all Python modules
+     - `find cli -name "*.py" -type f | sort` — discover all CLI modules
+     - Focus on high-signal entry points: `default_config.py`, `interface.py`,
+       `*_graph.py`, `*_setup.py`, `*_states.py`, `*_common.py`, `tool_runner.py`,
+       `macro_bridge.py`, `factory.py`, `cli/main.py`, `cli/models.py`
+     - `grep -rn "^class " tradingagents/ cli/ --include="*.py"` — find all classes
+     - `grep -rn "@dataclass" tradingagents/ --include="*.py"` — find data classes
      - Read directory structures to understand the module layout
    - **Dependency discovery**: Read `pyproject.toml` and any `requirements*.txt` files
-   - **CLI discovery**: `find cli -name "*.py" -type f`
    - **Test discovery**: `ls tests/` to find all test files
    - `git log --oneline -20` — recent history
-4. **Write each context file** following the skill's extraction rules and formatting rules
+4. **Write each context file** following the skill's extraction rules and formatting rules,
+   covering **all** subsystems:
+   - Agents (analysts, researchers, scanners, managers, traders, risk_mgmt)
+   - Dataflows (vendor routing, rate limiters, exceptions, all three vendors)
+   - Graphs (trading graph, scanner graph, setup, conditional logic)
+   - Pipeline (`MacroBridge`, data classes, parse → filter → analyze flow)
+   - CLI (commands, `MessageBuffer`, `StatsCallbackHandler`, Rich UI)
+   - LLM Clients (factory, multi-provider support, per-tier overrides)
+   - Config (env var system, 3-tier model hierarchy, vendor routing config)
+   - Tests (organization, markers, offline vs live, mocking patterns)
 5. **Verify**: Re-read each file and confirm:
    - Every factual claim maps to a real file or ADR
    - No contradictions between files
    - No redundancy (each fact lives in exactly one file)
    - Freshness marker is set to today's date
+   - All subsystems above are represented in the documentation
 
 ### When Asked to "Audit Memory"
 
 1. Read all files in `docs/agent/context/`
 2. For each file, verify 5 random factual claims against actual source code
-3. Report accuracy percentage and list any stale/incorrect facts
-4. Propose specific corrections
+3. Check for coverage of all subsystems (agents, dataflows, graphs, pipeline, CLI,
+   LLM clients, config, tests)
+4. Report accuracy percentage and list any stale/incorrect/missing facts
+5. Propose specific corrections
 
 ### When Asked to "Update Memory After a Change"
 
@@ -68,7 +85,8 @@ Read the skill file **before** starting any memory work.
 
 Before completing any memory build/refresh:
 
-- [ ] All 5 context files exist: ARCHITECTURE.md, CONVENTIONS.md, COMPONENTS.md, TECH_STACK.md, GLOSSARY.md
+- [ ] All 5 context files exist: ARCHITECTURE.md, CONVENTIONS.md, COMPONENTS.md,
+      TECH_STACK.md, GLOSSARY.md
 - [ ] CURRENT_STATE.md is up to date
 - [ ] No file exceeds 200 lines (signals need for splitting)
 - [ ] Every convention in CONVENTIONS.md cites a source
@@ -76,6 +94,11 @@ Before completing any memory build/refresh:
 - [ ] Glossary covers every term used in other context files
 - [ ] No duplicate information across files
 - [ ] Freshness markers are set to today's date
+- [ ] **Pipeline subsystem documented** (MacroBridge, data classes, flow)
+- [ ] **CLI subsystem documented** (commands, MessageBuffer, UI patterns)
+- [ ] **All data classes documented** (MacroContext, StockCandidate, TickerResult, etc.)
+- [ ] **Constants include actual values** (MIN_REPORT_LENGTH=2000, MAX_TOOL_ROUNDS=5, etc.)
+- [ ] **Dependencies include version constraints** from pyproject.toml
 
 ## Output Format
 
@@ -87,5 +110,6 @@ When reporting completion, provide:
 **Files Created/Updated**: [list]
 **Sources Consulted**: [count] source files, [count] ADRs, [count] git commits
 **Quality Gate**: [PASS/FAIL] — [details if FAIL]
+**Subsystem Coverage**: agents ✓ dataflows ✓ graphs ✓ pipeline ✓ CLI ✓ LLM ✓ config ✓ tests ✓
 **Freshness**: All files verified as of YYYY-MM-DD
 ```
