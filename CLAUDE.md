@@ -1,7 +1,7 @@
 # TradingAgents Framework - Project Knowledge
 
 Multi-agent LLM trading framework (v0.2.1) using LangGraph for financial analysis and
-decision making. 18 specialized agents, 3 data vendors, 6 LLM providers.
+decision making. 17 specialized agents, 3 data vendors, 6 LLM providers.
 
 ## Quick Start
 

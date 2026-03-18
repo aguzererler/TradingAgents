@@ -113,26 +113,18 @@ cli/
 | `TradingAgentsGraph` | `graph/trading_graph.py` | Main trading workflow orchestrator |
 | `ScannerGraph` | `graph/scanner_graph.py` | Scanner pipeline orchestrator |
 | `GraphSetup` | `graph/setup.py` | Trading graph node wiring |
-| `ScannerGraphSetup` | `graph/scanner_setup.py` | Scanner graph fan-out/fan-in wiring |
-| `ConditionalLogic` | `graph/conditional_logic.py` | Debate round routing logic |
-| `ScannerConditionalLogic` | `graph/scanner_conditional_logic.py` | Scanner phase routing |
-| `Propagator` | `graph/propagation.py` | Forward propagation through graph |
-| `SignalProcessor` | `graph/signal_processing.py` | Signal aggregation |
-| `Reflector` | `graph/reflection.py` | Learning and memory |
-| `MacroBridge` | `pipeline/macro_bridge.py` | Scanner → trading analysis bridge |
+| `ScannerGraphSetup` | `graph/scanner_setup.py` | Scanner fan-out/fan-in wiring |
+| `MacroBridge` | `pipeline/macro_bridge.py` | Scanner → trading bridge |
 | `MacroContext` | `pipeline/macro_bridge.py` | Macro-level context dataclass |
 | `StockCandidate` | `pipeline/macro_bridge.py` | Stock surfaced by scanner dataclass |
-| `TickerResult` | `pipeline/macro_bridge.py` | Per-ticker analysis result dataclass |
+| `TickerResult` | `pipeline/macro_bridge.py` | Per-ticker result dataclass |
 | `AgentState` | `agents/utils/agent_states.py` | LangGraph state for trading pipeline |
 | `InvestDebateState` | `agents/utils/agent_states.py` | Bull/Bear debate state |
 | `RiskDebateState` | `agents/utils/agent_states.py` | Risk discussion state |
-| `ScannerState` | `agents/utils/scanner_states.py` | LangGraph state for scanner pipeline |
-| `FinancialSituationMemory` | `agents/utils/memory.py` | Agent memory utility |
+| `ScannerState` | `agents/utils/scanner_states.py` | LangGraph state with `_last_value` reducers |
 | `BaseLLMClient` | `llm_clients/base_client.py` | Abstract base for LLM clients |
 | `OpenAIClient` | `llm_clients/openai_client.py` | OpenAI/compatible provider client |
 | `UnifiedChatOpenAI` | `llm_clients/openai_client.py` | ChatOpenAI subclass for GPT-5 compat |
-| `AnthropicClient` | `llm_clients/anthropic_client.py` | Anthropic Claude client |
-| `GoogleClient` | `llm_clients/google_client.py` | Google Gemini client |
 | `MessageBuffer` | `cli/main.py` | Real-time agent status + report manager |
 | `StatsCallbackHandler` | `cli/stats_handler.py` | LLM call token/timing metrics |
 | `AlphaVantageError` | `dataflows/alpha_vantage_common.py` | AV base exception |
@@ -163,23 +155,21 @@ cli/
 2. Create domain files: `newvendor_stock.py`, `newvendor_news.py`, etc.
 3. Create facade: `newvendor.py` (re-exports)
 4. Register methods in `tradingagents/dataflows/interface.py` → `VENDOR_METHODS`
-5. Configure routing in `tradingagents/default_config.py` → `vendor_*` and `tool_vendors`
-6. If data contracts are compatible, optionally add to `FALLBACK_ALLOWED`
-7. Add error type to catch list: `(AlphaVantageError, FinnhubError, NewVendorError, ...)`
+5. Configure in `tradingagents/default_config.py` → `data_vendors` and `tool_vendors`
+6. Optionally add to `FALLBACK_ALLOWED` if data contracts are compatible
+7. Add error type to catch list in `route_to_vendor()`
 8. Write ADR in `docs/agent/decisions/`
 
 ### Adding a New Config Key
 
-1. Add to `DEFAULT_CONFIG` in `tradingagents/default_config.py` using `_env()` or
-   `_env_int()`
-2. Key is automatically overridable via `TRADINGAGENTS_<UPPERCASE_KEY>` env var
+1. Add to `DEFAULT_CONFIG` in `tradingagents/default_config.py` using `_env()` or `_env_int()`
+2. Automatically overridable via `TRADINGAGENTS_<UPPERCASE_KEY>` env var
 3. Document in `.env.example`
 
 ### Adding a New LLM Provider
 
 1. Create `tradingagents/llm_clients/new_provider_client.py` extending `BaseLLMClient`
 2. Register in `tradingagents/llm_clients/factory.py` → `create_llm_client()`
-3. Add config value string to documentation
 
 ## CLI Commands
 
@@ -201,9 +191,7 @@ cli/
 | `test_scanner_fallback.py` | Unit (mocked) | Vendor fallback paths |
 | `test_scanner_graph.py` | Unit (mocked) | Graph compilation |
 | `test_vendor_failfast.py` | Unit (mocked) | Fail-fast vendor routing |
-| `test_alpha_vantage_exceptions.py` | Unit | AV exception hierarchy |
-| `test_alpha_vantage_integration.py` | Integration | AV API endpoints |
-| `test_alpha_vantage_scanner.py` | Unit/Integration | AV scanner functions |
+| `test_alpha_vantage_*.py` (3 files) | Unit/Integration | Exceptions, API endpoints, scanner |
 | `test_yfinance_integration.py` | Integration | yfinance data access |
 | `test_e2e_api_integration.py` | Integration | End-to-end API routing |
 | `test_debate_rounds.py` | Unit | Debate round logic |
@@ -213,11 +201,6 @@ cli/
 | `test_peer_comparison.py` | Unit | Peer comparison logic |
 | `test_ttm_analysis.py` | Unit | TTM analysis computation |
 | `test_scanner_tools.py` | Unit | Scanner tool functions |
-| `test_scanner_comprehensive.py` | Integration (LLM) | Full scan pipeline |
-| `test_scanner_complete_e2e.py` | Integration | Full scanner E2E |
-| `test_scanner_end_to_end.py` | Integration | Scanner workflow |
-| `test_scanner_final.py` | Integration | Scanner final output |
-| `test_scanner_mocked.py` | Unit (mocked) | Mocked scanner tests |
-| `test_scanner_routing.py` | Unit | Scanner routing logic |
+| `test_scanner_*.py` (6 files) | Unit/Integration | Mocked, routing, E2E, comprehensive |
 
 <!-- Last verified: 2026-03-18 -->

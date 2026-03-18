@@ -3,7 +3,7 @@
 ## System Description
 
 TradingAgents is a multi-agent LLM framework (v0.2.1) for financial analysis and trading
-decisions, built on LangGraph. It simulates a real trading firm with 18 specialized agents
+decisions, built on LangGraph. It simulates a real trading firm with 17 specialized agents
 — analysts, researchers, traders, scanners, and risk managers — that collaborate through
 two graph-based workflows, connected by a pipeline bridge. Three data vendors supply
 market data, and a multi-provider LLM factory supports six provider backends.
