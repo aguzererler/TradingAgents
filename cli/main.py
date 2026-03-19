@@ -35,6 +35,7 @@ from cli.utils import *
 from tradingagents.graph.scanner_graph import ScannerGraph
 from cli.announcements import fetch_announcements, display_announcements
 from cli.stats_handler import StatsCallbackHandler
+from tradingagents.observability import RunLogger, set_run_logger
 
 console = Console()
 
@@ -924,6 +925,8 @@ def run_analysis():
 
     # Create stats callback handler for tracking LLM/tool calls
     stats_handler = StatsCallbackHandler()
+    run_logger = RunLogger()
+    set_run_logger(run_logger)
 
     # Normalize analyst selection to predefined order (selection is a 'set', order is fixed)
     selected_set = {analyst.value for analyst in selections["analysts"]}
@@ -934,7 +937,7 @@ def run_analysis():
         selected_analyst_keys,
         config=config,
         debug=True,
-        callbacks=[stats_handler],
+        callbacks=[stats_handler, run_logger.callback],
     )
 
     # Initialize message buffer with selected analysts
@@ -1170,6 +1173,19 @@ def run_analysis():
         except Exception as e:
             console.print(f"[red]Error saving report: {e}[/red]")
 
+    # Write observability log
+    log_dir = get_ticker_dir(selections["analysis_date"], selections["ticker"])
+    log_dir.mkdir(parents=True, exist_ok=True)
+    run_logger.write_log(log_dir / "run_log.jsonl")
+    summary = run_logger.summary()
+    console.print(
+        f"[dim]LLM calls: {summary['llm_calls']} | "
+        f"Tokens: {summary['tokens_in']}→{summary['tokens_out']} | "
+        f"Tools: {summary['tool_calls']} | "
+        f"Vendor calls: {summary['vendor_success']}ok/{summary['vendor_fail']}fail[/dim]"
+    )
+    set_run_logger(None)
+
     # Prompt to display full report
     display_choice = typer.prompt("\nDisplay full report on screen?", default="Y").strip().upper()
     if display_choice in ("Y", "YES", ""):
@@ -1194,8 +1210,11 @@ def run_scan(date: Optional[str] = None):
     console.print("[dim]Phase 2: Industry Deep Dive[/dim]")
     console.print("[dim]Phase 3: Macro Synthesis → stocks to investigate[/dim]\n")
 
+    run_logger = RunLogger()
+    set_run_logger(run_logger)
+
     try:
-        scanner = ScannerGraph(config=DEFAULT_CONFIG.copy())
+        scanner = ScannerGraph(config=DEFAULT_CONFIG.copy(), callbacks=[run_logger.callback])
         with Live(Spinner("dots", text="Scanning..."), console=console, transient=True):
             result = scanner.scan(scan_date)
     except Exception as e:
@@ -1238,6 +1257,17 @@ def run_scan(date: Optional[str] = None):
         except (json.JSONDecodeError, KeyError, ValueError):
             pass  # Summary wasn't valid JSON — already printed as markdown
 
+
+    # Write observability log
+    run_logger.write_log(save_dir / "run_log.jsonl")
+    scan_summary = run_logger.summary()
+    console.print(
+        f"[dim]LLM calls: {scan_summary['llm_calls']} | "
+        f"Tokens: {scan_summary['tokens_in']}→{scan_summary['tokens_out']} | "
+        f"Tools: {scan_summary['tool_calls']} | "
+        f"Vendor calls: {scan_summary['vendor_success']}ok/{scan_summary['vendor_fail']}fail[/dim]"
+    )
+    set_run_logger(None)
 
     console.print(f"\n[green]Results saved to {save_dir}[/green]")
 
@@ -1292,6 +1322,9 @@ def run_pipeline():
     config = DEFAULT_CONFIG.copy()
     output_dir = get_daily_dir(analysis_date)
 
+    run_logger = RunLogger()
+    set_run_logger(run_logger)
+
     console.print(f"\n[cyan]Running TradingAgents for {len(candidates)} tickers...[/cyan]")
     try:
         with Live(Spinner("dots", text="Analyzing..."), console=console, transient=True):
@@ -1303,6 +1336,18 @@ def run_pipeline():
         raise typer.Exit(1)
 
     save_results(results, macro_context, output_dir)
+
+    # Write observability log
+    output_dir.mkdir(parents=True, exist_ok=True)
+    run_logger.write_log(output_dir / "run_log.jsonl")
+    pipe_summary = run_logger.summary()
+    console.print(
+        f"[dim]LLM calls: {pipe_summary['llm_calls']} | "
+        f"Tokens: {pipe_summary['tokens_in']}→{pipe_summary['tokens_out']} | "
+        f"Tools: {pipe_summary['tool_calls']} | "
+        f"Vendor calls: {pipe_summary['vendor_success']}ok/{pipe_summary['vendor_fail']}fail[/dim]"
+    )
+    set_run_logger(None)
 
     successes = [r for r in results if not r.error]
     failures = [r for r in results if r.error]

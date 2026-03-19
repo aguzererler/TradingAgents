@@ -115,6 +115,7 @@ class TestScannerEndToEnd:
                 "sector_performance_report.md",
                 "industry_deep_dive_report.md",
                 "macro_scan_summary.md",
+                "run_log.jsonl",
             }
 
             assert len(written_files) >= 1, (
