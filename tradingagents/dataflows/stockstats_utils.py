@@ -7,7 +7,8 @@ from .config import get_config
 
 
 def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
-    """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps."""
+    """Normalize a stock DataFrame for stockstats: parse dates, drop invalid rows, fill price gaps.
+    Ensure DataFrame has lowercase columns for stockstats."""
     data["Date"] = pd.to_datetime(data["Date"], errors="coerce")
     data = data.dropna(subset=["Date"])
 
@@ -16,7 +17,9 @@ def _clean_dataframe(data: pd.DataFrame) -> pd.DataFrame:
     data = data.dropna(subset=["Close"])
     data[price_cols] = data[price_cols].ffill().bfill()
 
-    return data
+    df = data.copy()
+    df.columns = [str(c).lower() for c in df.columns]
+    return df
 
 
 class StockstatsUtils:
