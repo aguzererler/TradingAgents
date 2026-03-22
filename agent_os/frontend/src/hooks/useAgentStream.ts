@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 
 export interface AgentEvent {
   id: string;
@@ -25,20 +25,36 @@ export interface AgentEvent {
   };
 }
 
+type StreamStatus = 'idle' | 'connecting' | 'streaming' | 'completed' | 'error';
+
 export const useAgentStream = (runId: string | null) => {
   const [events, setEvents] = useState<AgentEvent[]>([]);
-  const [status, setStatus] = useState<'idle' | 'connecting' | 'streaming' | 'completed' | 'error'>('idle');
+  const [status, setStatus] = useState<StreamStatus>('idle');
   const [error, setError] = useState<string | null>(null);
+  const statusRef = useRef<StreamStatus>('idle');
+  const socketRef = useRef<WebSocket | null>(null);
 
-  const connect = useCallback(() => {
+  // Keep statusRef in sync so callbacks always read the latest value
+  useEffect(() => {
+    statusRef.current = status;
+  }, [status]);
+
+  useEffect(() => {
     if (!runId) return;
+
+    // Close any existing socket before opening a new one
+    if (socketRef.current) {
+      socketRef.current.close();
+      socketRef.current = null;
+    }
 
     setStatus('connecting');
     setError(null);
 
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = '127.0.0.1:8088'; // Hardcoded for local dev to match backend
+    const host = '127.0.0.1:8088';
     const socket = new WebSocket(`${protocol}//${host}/ws/stream/${runId}`);
+    socketRef.current = socket;
 
     socket.onopen = () => {
       setStatus('streaming');
@@ -47,7 +63,7 @@ export const useAgentStream = (runId: string | null) => {
 
     socket.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      
+
       if (data.type === 'system' && data.message === 'Run completed.') {
         setStatus('completed');
       } else if (data.type === 'system' && data.message.startsWith('Error:')) {
@@ -59,7 +75,8 @@ export const useAgentStream = (runId: string | null) => {
     };
 
     socket.onclose = () => {
-      if (status !== 'completed' && status !== 'error') {
+      // Use the ref to read the latest status (avoids stale closure)
+      if (statusRef.current !== 'completed' && statusRef.current !== 'error') {
         setStatus('idle');
       }
       console.log(`Disconnected from run: ${runId}`);
@@ -73,17 +90,11 @@ export const useAgentStream = (runId: string | null) => {
 
     return () => {
       socket.close();
+      socketRef.current = null;
     };
-  }, [runId, status]);
+  }, [runId]);
 
-  useEffect(() => {
-    if (runId) {
-      const cleanup = connect();
-      return cleanup;
-    }
-  }, [runId, connect]);
-
-  const clearEvents = () => setEvents([]);
+  const clearEvents = useCallback(() => setEvents([]), []);
 
   return { events, status, error, clearEvents };
 };

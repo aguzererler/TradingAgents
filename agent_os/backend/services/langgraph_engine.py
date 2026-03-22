@@ -55,12 +55,31 @@ class LangGraphEngine:
         )
         
         initial_state = graph_wrapper.propagator.create_initial_state(ticker, date)
-        # We don't use propagator.get_graph_args() here because we want to stream events directly
         
         async for event in graph_wrapper.graph.astream_events(initial_state, version="v2"):
             mapped_event = self._map_langgraph_event(event)
             if mapped_event:
                 yield mapped_event
+
+    async def run_portfolio(self, run_id: str, params: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
+        """Run the portfolio management workflow and stream events."""
+        print(f"Engine: Starting PORTFOLIO {run_id}")
+        yield {
+            "id": run_id,
+            "type": "system",
+            "agent": "SYSTEM",
+            "message": "Portfolio workflow streaming not yet implemented.",
+        }
+
+    async def run_auto(self, run_id: str, params: Dict[str, Any]) -> AsyncGenerator[Dict[str, Any], None]:
+        """Run the full auto (scan → filter → portfolio) workflow and stream events."""
+        print(f"Engine: Starting AUTO {run_id}")
+        yield {
+            "id": run_id,
+            "type": "system",
+            "agent": "SYSTEM",
+            "message": "Auto workflow streaming not yet implemented.",
+        }
 
     def _map_langgraph_event(self, event: Dict[str, Any]) -> Dict[str, Any] | None:
         """Map LangGraph v2 events to AgentOS frontend contract."""
@@ -118,17 +137,7 @@ class LangGraphEngine:
                     "model": model,
                     "tokens_in": usage.get("input_tokens", 0),
                     "tokens_out": usage.get("output_tokens", 0),
-                    # "latency_ms": ... # calculated in frontend or here if we track start
                 }
             }
             
         return None
-
-    # Sync versions for BackgroundTasks (if we still want to use them)
-    async def run_scan_background(self, run_id: str, params: Dict[str, Any]):
-        async for _ in self.run_scan(run_id, params):
-            pass
-
-    async def run_pipeline_background(self, run_id: str, params: Dict[str, Any]):
-        async for _ in self.run_pipeline(run_id, params):
-            pass

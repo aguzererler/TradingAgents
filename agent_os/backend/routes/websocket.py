@@ -1,9 +1,5 @@
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
-import asyncio
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 import time
-import uuid
-from typing import Dict, Any
-from agent_os.backend.dependencies import get_current_user
 from agent_os.backend.store import runs
 from agent_os.backend.services.langgraph_engine import LangGraphEngine
 
@@ -34,7 +30,10 @@ async def websocket_endpoint(
             stream_gen = engine.run_scan(run_id, params)
         elif run_type == "pipeline":
             stream_gen = engine.run_pipeline(run_id, params)
-        # Add other types as they are implemented in LangGraphEngine
+        elif run_type == "portfolio":
+            stream_gen = engine.run_portfolio(run_id, params)
+        elif run_type == "auto":
+            stream_gen = engine.run_auto(run_id, params)
         
         if stream_gen:
             async for payload in stream_gen:
@@ -52,5 +51,8 @@ async def websocket_endpoint(
     except Exception as e:
         import traceback
         traceback.print_exc()
-        await websocket.send_json({"type": "system", "message": f"Error: {str(e)}"})
-        await websocket.close()
+        try:
+            await websocket.send_json({"type": "system", "message": f"Error: {str(e)}"})
+            await websocket.close()
+        except Exception:
+            pass

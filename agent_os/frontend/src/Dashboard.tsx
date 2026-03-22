@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useCallback } from 'react';
 import { 
   Box, 
   Flex, 
@@ -27,14 +27,16 @@ const API_BASE = 'http://127.0.0.1:8088/api';
 export const Dashboard: React.FC = () => {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [isTriggering, setIsTriggering] = useState(false);
-  const [portfolioId, setPortfolioId] = useState<string>("main_portfolio");
+  const [portfolioId] = useState<string>("main_portfolio");
   const { events, status, clearEvents } = useAgentStream(activeRunId);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNode, setSelectedNode] = useState<any>(null);
+  const triggerLockRef = useRef(false);
 
-  const startRun = async (type: string) => {
-    if (isTriggering || status === 'streaming' || status === 'connecting') return;
-    
+  const startRun = useCallback(async (type: string) => {
+    // Use a ref-based lock to prevent race conditions from rapid clicks
+    if (triggerLockRef.current || status === 'streaming' || status === 'connecting') return;
+    triggerLockRef.current = true;
     setIsTriggering(true);
     try {
       clearEvents();
@@ -46,9 +48,10 @@ export const Dashboard: React.FC = () => {
     } catch (err) {
       console.error("Failed to start run:", err);
     } finally {
+      triggerLockRef.current = false;
       setIsTriggering(false);
     }
-  };
+  }, [status, portfolioId, clearEvents]);
 
   return (
     <Flex h="100vh" bg="slate.950" color="white" overflow="hidden">

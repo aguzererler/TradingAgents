@@ -227,3 +227,9 @@ Y/
 
 # Backup files
 *.backup
+
+# Node.js
+node_modules/
+
+# macOS
+.DS_Store

@@ -65,7 +65,7 @@ async def get_portfolio_summary(
                 regime = ctx.get("economic_cycle", "NEUTRAL").upper()
                 # Beta is often calculated per-portfolio or per-holding
                 # For now, we use a placeholder or pull from metadata
-            except:
+            except Exception:
                 pass
 
         return {
