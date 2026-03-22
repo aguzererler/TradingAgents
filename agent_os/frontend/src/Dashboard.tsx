@@ -27,7 +27,7 @@ const API_BASE = 'http://127.0.0.1:8088/api';
 export const Dashboard: React.FC = () => {
   const [activeRunId, setActiveRunId] = useState<string | null>(null);
   const [isTriggering, setIsTriggering] = useState(false);
-  const [portfolioId] = useState<string>("main_portfolio");
+  const portfolioId = "main_portfolio";
   const { events, status, clearEvents } = useAgentStream(activeRunId);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const [selectedNode, setSelectedNode] = useState<any>(null);
