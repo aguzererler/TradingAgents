@@ -24,6 +24,11 @@ Portfolio Manager feature fully implemented (Phases 1–10). All 588 tests passi
   - 48 new tests (28 risk_evaluator + 10 candidate_prioritizer + 10 trade_executor)
 - **Portfolio CLI integration**: `portfolio`, `check-portfolio`, `auto` commands in `cli/main.py`
 - **Documentation updated**: Flow diagram in `docs/portfolio/00_overview.md` aligned with actual 6-node sequential implementation; token estimation per model added; CLI & test commands added to README.md
+- **AgentOS Dashboard & API improvements**:
+  - Live terminal drawer showing full LLM Request/Response payload, input/output tokens, and latency.
+  - Streaming visualization with accurate node tracking (completed vs running), truncating model names, and resolving progress bar animation bugs.
+  - Added DeepSeek R1 `<think>` tag regex parsing to backend to prevent `<think>` blocks from eclipsing actual English answers due to payload limits.
+  - Aligned API disk-saving logic with CLI: API runs now natively persist `1_analysts/` markdown reports, `scan_summary.json` to `reports/daily` and `reports/market`, plus they stream pure JSON event sequences to a new `reports/events/` directory.
 
 # In Progress
 

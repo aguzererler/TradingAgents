@@ -21,7 +21,9 @@ export interface AgentEvent {
     latency_ms: number;
     input_tokens: number;
     output_tokens: number;
-    raw_json_response: string;
+    request_content: string;
+    response_content: string;
+    is_tool_call?: boolean;
   };
 }
 
