@@ -188,24 +188,43 @@ class LangGraphEngine:
     def _extract_request_summary(self, event_data: Dict[str, Any]) -> str:
         """Extract a summary of the LLM request input for the detail view."""
         try:
-            messages = event_data.get("messages", [])
+            input_val = event_data.get("input", event_data)
+            messages = []
+            
+            if isinstance(input_val, dict):
+                messages = input_val.get("messages", [])
+            elif isinstance(input_val, list):
+                messages = input_val
+            elif isinstance(input_val, str):
+                return input_val[:3000]
+                
             if not messages:
+                messages = event_data.get("messages", [])
+                
+            if not messages:
+                # Provide a fallback JSON string representation of input if not messages
+                if input_val and isinstance(input_val, dict):
+                    return __import__('json').dumps(input_val, default=str)[:3000]
                 return ""
+
             # messages can be a list of lists or list of message objects
             parts = []
             msg_list = messages[0] if messages and isinstance(messages[0], list) else messages
-            for msg in msg_list[:5]:  # First 5 messages max
+            for msg in msg_list:
                 if hasattr(msg, "content"):
-                    role = getattr(msg, "type", "unknown")
-                    content = str(msg.content)[:500]
+                    role = getattr(msg, "type", getattr(msg, "role", "unknown"))
+                    content = str(msg.content)[:1500]
                     parts.append(f"[{role}]: {content}")
                 elif isinstance(msg, dict):
-                    role = msg.get("role", "unknown")
-                    content = str(msg.get("content", ""))[:500]
+                    role = msg.get("role", msg.get("type", "unknown"))
+                    content = str(msg.get("content", ""))[:1500]
                     parts.append(f"[{role}]: {content}")
-            return "\n\n".join(parts)[:3000]
-        except Exception:
-            return ""
+                else:
+                    parts.append(str(msg)[:500])
+                    
+            return "\n\n".join(parts)[:6000]
+        except Exception as e:
+            return f"Error extracting request: {str(e)}"
 
     def _map_langgraph_event(self, event: Dict[str, Any]) -> Dict[str, Any] | None:
         """Map LangGraph v2 events to AgentOS frontend contract."""

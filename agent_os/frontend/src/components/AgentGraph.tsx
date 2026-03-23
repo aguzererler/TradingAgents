@@ -142,15 +142,15 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ events, onNodeClick }) =
       if (!evt.node_id || nodeIdSet.has(evt.node_id)) return;
       nodeIdSet.add(evt.node_id);
 
-      const baseName = evt.node_id.replace(/_\d+$/, '');
+      const agentName = evt.agent || evt.node_id.replace(/_\d+$/, '');
       
-      if (!columnMap.has(baseName)) {
-        columnMap.set(baseName, nextColumn++);
+      if (!columnMap.has(agentName)) {
+        columnMap.set(agentName, nextColumn++);
       }
-      const col = columnMap.get(baseName)!;
+      const col = columnMap.get(agentName)!;
       
-      const row = columnRowCount.get(baseName) || 0;
-      columnRowCount.set(baseName, row + 1);
+      const row = columnRowCount.get(agentName) || 0;
+      columnRowCount.set(agentName, row + 1);
 
       // Determine status: result = completed, tool = tool, thought = running
       let status = evt.type === 'result' ? 'completed' 
@@ -161,8 +161,7 @@ export const AgentGraph: React.FC<AgentGraphProps> = ({ events, onNodeClick }) =
       // A final result has is_tool_call falsy and isn't a tool_execution event
       if (status === 'running') {
         const hasFinalResult = events.some(e => 
-            e.node_id &&
-            e.node_id.startsWith(baseName) && 
+            e.agent === evt.agent && 
             e.type === 'result' && 
             e.metrics?.model !== 'tool_execution' && 
             !e.details?.is_tool_call
