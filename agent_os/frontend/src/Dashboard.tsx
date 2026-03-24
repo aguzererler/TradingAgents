@@ -8,6 +8,7 @@ import {
   IconButton, 
   Button, 
   Input,
+  Checkbox,
   useDisclosure,
   Drawer,
   DrawerOverlay,
@@ -34,7 +35,7 @@ import {
   Collapse,
   useToast,
 } from '@chakra-ui/react';
-import { LayoutDashboard, Wallet, Settings, Terminal as TerminalIcon, ChevronRight, Eye, Search, BarChart3, Bot, ChevronDown, ChevronUp, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Wallet, Settings, Terminal as TerminalIcon, ChevronRight, Eye, Search, BarChart3, Bot, ChevronDown, ChevronUp, FlaskConical, Trash2 } from 'lucide-react';
 import { MetricHeader } from './components/MetricHeader';
 import { AgentGraph } from './components/AgentGraph';
 import { PortfolioViewer } from './components/PortfolioViewer';
@@ -55,6 +56,7 @@ interface RunParams {
   portfolio_id: string;
   mock_type: MockType;
   speed: string;
+  force: boolean;
 }
 
 const RUN_TYPE_LABELS: Record<RunType, string> = {
@@ -70,7 +72,7 @@ const REQUIRED_PARAMS: Record<RunType, (keyof RunParams)[]> = {
   scan: ['date'],
   pipeline: ['ticker', 'date'],
   portfolio: ['date', 'portfolio_id'],
-  auto: ['date', 'ticker'],
+  auto: ['date', 'portfolio_id'],
   mock: [],
 };
 
@@ -325,6 +327,7 @@ export const Dashboard: React.FC = () => {
     portfolio_id: 'main_portfolio',
     mock_type: 'pipeline',
     speed: '3',
+    force: false,
   });
 
   // Auto-scroll the terminal to the bottom as new events arrive
@@ -350,7 +353,7 @@ export const Dashboard: React.FC = () => {
 
     // Validate required params
     const required = REQUIRED_PARAMS[type];
-    const missing = required.filter((k) => !effectiveParams[k]?.trim());
+    const missing = required.filter((k) => { const v = effectiveParams[k]; return typeof v === 'string' ? !v.trim() : !v; });
     if (missing.length > 0) {
       toast({
         title: `Missing required fields for ${RUN_TYPE_LABELS[type]}`,
@@ -384,6 +387,7 @@ export const Dashboard: React.FC = () => {
             portfolio_id: effectiveParams.portfolio_id,
             date: effectiveParams.date,
             ticker: effectiveParams.ticker,
+            force: effectiveParams.force,
           };
       const res = await axios.post(`${API_BASE}/run/${type}`, body);
       setActiveRunId(res.data.run_id);
@@ -397,9 +401,6 @@ export const Dashboard: React.FC = () => {
 
   /** Re-run triggered from a graph node's Re-run button. */
   const handleNodeRerun = useCallback((identifier: string, _nodeId: string) => {
-    // Determine run type from the identifier:
-    //   "MARKET"  → scan (no ticker needed)
-    //   anything else → pipeline with that ticker
     if (identifier === 'MARKET' || identifier === '') {
       startRun('scan');
     } else {
@@ -407,6 +408,27 @@ export const Dashboard: React.FC = () => {
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isRunning, params]);
+
+  const resetPortfolioStage = async () => {
+    if (!params.date || !params.portfolio_id) {
+      toast({ title: 'Date and Portfolio ID are required', status: 'warning', duration: 3000, isClosable: true, position: 'top' });
+      setShowParams(true);
+      return;
+    }
+    try {
+      const res = await axios.delete(`${API_BASE}/run/portfolio-stage`, { data: { date: params.date, portfolio_id: params.portfolio_id } });
+      const deleted: string[] = res.data.deleted;
+      toast({
+        title: deleted.length ? `Cleared: ${deleted.join(', ')}` : 'Nothing to clear — no decision files found',
+        status: deleted.length ? 'success' : 'info',
+        duration: 4000,
+        isClosable: true,
+        position: 'top',
+      });
+    } catch (err) {
+      toast({ title: 'Failed to reset portfolio stage', status: 'error', duration: 3000, isClosable: true, position: 'top' });
+    }
+  };
 
   /** Open the full-screen event detail modal */
   const openModal = useCallback((evt: AgentEvent) => {
@@ -521,7 +543,7 @@ export const Dashboard: React.FC = () => {
                       );
                     })}
                     <Divider orientation="vertical" h="20px" />
-                    {/* Mock run button — separate, always visible */}
+                    {/* Mock run button — no LLM calls */}
                     <Tooltip label="Stream scripted events — no LLM calls" hasArrow placement="bottom">
                       <Button
                         size="sm"
@@ -534,6 +556,18 @@ export const Dashboard: React.FC = () => {
                         isDisabled={isRunning && activeRunType !== 'mock'}
                       >
                         Mock
+                      </Button>
+                    </Tooltip>
+                    <Tooltip label="Clear PM decision & execution result for this date/portfolio, then re-run Auto to start Phase 3 fresh">
+                      <Button
+                        size="sm"
+                        leftIcon={<Trash2 size={14} />}
+                        colorScheme="red"
+                        variant="outline"
+                        onClick={resetPortfolioStage}
+                        isDisabled={isRunning}
+                      >
+                        Reset Decision
                       </Button>
                     </Tooltip>
                     <Divider orientation="vertical" h="20px" />
@@ -622,8 +656,19 @@ export const Dashboard: React.FC = () => {
                            ))}
                          </HStack>
                        </HStack>
+                       <Box height="1px" bg="whiteAlpha.100" />
+                       <HStack>
+                         <Checkbox
+                           size="sm"
+                           colorScheme="orange"
+                           isChecked={params.force}
+                           onChange={(e) => setParams((p) => ({ ...p, force: e.target.checked }))}
+                         >
+                           <Text fontSize="xs" color="orange.300">Force re-run (ignore cached results)</Text>
+                         </Checkbox>
+                       </HStack>
                        <Text fontSize="2xs" color="whiteAlpha.400">
-                         Required: Scan → date · Pipeline → ticker, date · Portfolio → date, portfolio · Auto → date, ticker · Mock → no API calls
+                         Required: Scan → date · Pipeline → ticker, date · Portfolio → date, portfolio · Auto → date, portfolio · Mock → no API calls
                        </Text>
                      </VStack>
                    </Box>
