@@ -1560,11 +1560,13 @@ def run_pipeline(
     # Parse macro output
     macro_context, all_candidates = parse_macro_output(macro_path)
     candidates = filter_candidates(all_candidates, min_conviction, ticker_filter)
+    num_scan_candidates = len(candidates)
 
     # Append portfolio-holding candidates that aren't already in the scan list
+    num_holdings_added = 0
     if holdings_candidates:
-        scan_tickers = {c.ticker for c in candidates}
-        extra = [h for h in holdings_candidates if h.ticker not in scan_tickers]
+        scan_tickers = {c.ticker.upper() for c in candidates}
+        extra = [h for h in holdings_candidates if h.ticker.upper() not in scan_tickers]
         if extra:
             console.print(
                 f"[cyan]Adding {len(extra)} ticker(s) from portfolio holdings: "
@@ -1572,11 +1574,12 @@ def run_pipeline(
                 + "[/cyan]"
             )
             candidates = list(candidates) + extra
+            num_holdings_added = len(extra)
 
     console.print(
         f"\n[cyan]Candidates: {len(candidates)} total "
-        f"({len(all_candidates)} from scan, "
-        f"{len(holdings_candidates or [])} from holdings)[/cyan]"
+        f"({num_scan_candidates} from scan, "
+        f"{num_holdings_added} from holdings)[/cyan]"
     )
 
     table = Table(title="Selected Stocks", box=box.ROUNDED)
