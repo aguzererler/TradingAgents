@@ -9,7 +9,7 @@ from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.graph.scanner_graph import ScannerGraph
 from tradingagents.graph.portfolio_graph import PortfolioGraph
 from tradingagents.default_config import DEFAULT_CONFIG
-from tradingagents.report_paths import get_market_dir, get_ticker_dir
+from tradingagents.report_paths import get_market_dir, get_ticker_dir, get_daily_dir
 from tradingagents.portfolio.report_store import ReportStore
 from tradingagents.daily_digest import append_to_digest
 from tradingagents.agents.utils.json_utils import extract_json
@@ -61,6 +61,9 @@ def _tickers_from_decision(decision: dict) -> list[str]:
 
 # Maximum characters of prompt/response for the full fields (generous limit)
 _MAX_FULL_LEN = 50_000
+
+# Keywords in tool output that indicate the error was handled gracefully
+_GRACEFUL_SKIP_KEYWORDS = ("gracefully", "fallback", "skipped")
 
 # ──────────────────────────────────────────────────────────────────────────────
 # Tool-name → primary service mapping (best-effort, used for display only)
@@ -375,7 +378,6 @@ class LangGraphEngine:
         scan_summary = store.load_scan(date) or {}
         ticker_analyses: Dict[str, Any] = {}
 
-        from tradingagents.report_paths import get_daily_dir
         daily_dir = get_daily_dir(date)
         if daily_dir.exists():
             for ticker_dir in daily_dir.iterdir():
@@ -505,8 +507,7 @@ class LangGraphEngine:
                 yield self._system_log(f"Warning: could not save portfolio reports: {exc}")
 
         logger.info("Completed PORTFOLIO run=%s", run_id)
-        from tradingagents.report_paths import get_daily_dir as _gddir
-        self._finish_run_logger(run_id, _gddir(date) / "portfolio")
+        self._finish_run_logger(run_id, get_daily_dir(date) / "portfolio")
 
     async def run_trade_execution(
         self, run_id: str, date: str, portfolio_id: str, decision: dict, prices: dict,
@@ -698,8 +699,7 @@ class LangGraphEngine:
                     yield evt
 
         logger.info("Completed AUTO run=%s", run_id)
-        from tradingagents.report_paths import get_daily_dir as _gddir2
-        self._finish_run_logger(run_id, _gddir2(date))
+        self._finish_run_logger(run_id, get_daily_dir(date))
 
     # ------------------------------------------------------------------
     # Report helpers
@@ -1092,7 +1092,8 @@ class LangGraphEngine:
                         is_error = True
                         error_message = raw[:500]
                     # Detect graceful degradation (vendor fallback / empty-but-ok)
-                    if "gracefully" in raw.lower() or "fallback" in raw.lower() or "skipped" in raw.lower():
+                    raw_lower = raw.lower()
+                    if any(kw in raw_lower for kw in _GRACEFUL_SKIP_KEYWORDS):
                         graceful = True
                 # Some LangGraph versions pass errors through the event status
                 evt_status = (event.get("data") or {}).get("status")
