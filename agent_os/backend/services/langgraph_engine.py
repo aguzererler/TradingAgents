@@ -13,6 +13,7 @@ from tradingagents.report_paths import get_market_dir, get_ticker_dir
 from tradingagents.portfolio.report_store import ReportStore
 from tradingagents.daily_digest import append_to_digest
 from tradingagents.agents.utils.json_utils import extract_json
+from tradingagents.observability import RunLogger, set_run_logger
 
 logger = logging.getLogger("agent_os.engine")
 
@@ -61,6 +62,45 @@ def _tickers_from_decision(decision: dict) -> list[str]:
 # Maximum characters of prompt/response for the full fields (generous limit)
 _MAX_FULL_LEN = 50_000
 
+# ──────────────────────────────────────────────────────────────────────────────
+# Tool-name → primary service mapping (best-effort, used for display only)
+# ──────────────────────────────────────────────────────────────────────────────
+_TOOL_SERVICE_MAP: Dict[str, str] = {
+    # Core stock APIs
+    "get_stock_data": "yfinance",
+    "get_indicators": "yfinance",
+    # Fundamental data
+    "get_fundamentals": "yfinance",
+    "get_balance_sheet": "yfinance",
+    "get_cashflow": "yfinance",
+    "get_income_statement": "yfinance",
+    "get_ttm_analysis": "yfinance (derived)",
+    "get_peer_comparison": "yfinance (derived)",
+    "get_sector_relative": "yfinance (derived)",
+    "get_macro_regime": "yfinance (derived)",
+    # News
+    "get_news": "yfinance",
+    "get_global_news": "yfinance",
+    "get_insider_transactions": "finnhub",
+    # Scanner
+    "get_market_movers": "yfinance",
+    "get_market_indices": "finnhub",
+    "get_sector_performance": "finnhub",
+    "get_industry_performance": "yfinance",
+    "get_topic_news": "finnhub",
+    "get_earnings_calendar": "finnhub",
+    "get_economic_calendar": "finnhub",
+    # Finviz smart money
+    "get_insider_buying_stocks": "finviz",
+    "get_unusual_volume_stocks": "finviz",
+    "get_breakout_accumulation_stocks": "finviz",
+    # Portfolio (local)
+    "get_enriched_holdings": "local",
+    "compute_portfolio_risk_metrics": "local",
+    "load_portfolio_risk_metrics": "local",
+    "load_portfolio_decision": "local",
+}
+
 
 class LangGraphEngine:
     """Orchestrates LangGraph pipeline executions and streams events."""
@@ -74,6 +114,32 @@ class LangGraphEngine:
         self._node_prompts: Dict[str, Dict[str, str]] = {}
         # Track the human-readable identifier (ticker / "MARKET" / portfolio_id) per run
         self._run_identifiers: Dict[str, str] = {}
+        # Track RunLogger instances per run for JSONL persistence
+        self._run_loggers: Dict[str, RunLogger] = {}
+
+    # ------------------------------------------------------------------
+    # Run logger lifecycle
+    # ------------------------------------------------------------------
+
+    def _start_run_logger(self, run_id: str) -> RunLogger:
+        """Create and register a ``RunLogger`` for the given run."""
+        rl = RunLogger()
+        self._run_loggers[run_id] = rl
+        set_run_logger(rl)
+        return rl
+
+    def _finish_run_logger(self, run_id: str, log_dir: Path) -> None:
+        """Persist the run log to *log_dir*/run_log.jsonl and clean up."""
+        rl = self._run_loggers.pop(run_id, None)
+        if rl is None:
+            return
+        try:
+            log_dir.mkdir(parents=True, exist_ok=True)
+            rl.write_log(log_dir / "run_log.jsonl")
+        except Exception:
+            logger.exception("Failed to write run log for run=%s", run_id)
+        finally:
+            set_run_logger(None)
 
     # ------------------------------------------------------------------
     # Run helpers
@@ -85,6 +151,7 @@ class LangGraphEngine:
         """Run the 3-phase macro scanner and stream events."""
         date = params.get("date", time.strftime("%Y-%m-%d"))
 
+        self._start_run_logger(run_id)
         scanner = ScannerGraph(config=self.config)
 
         logger.info("Starting SCAN run=%s date=%s", run_id, date)
@@ -186,6 +253,7 @@ class LangGraphEngine:
                 yield self._system_log(f"Warning: could not save scan reports: {exc}")
 
         logger.info("Completed SCAN run=%s", run_id)
+        self._finish_run_logger(run_id, get_market_dir(date))
 
     async def run_pipeline(
         self, run_id: str, params: Dict[str, Any]
@@ -194,6 +262,8 @@ class LangGraphEngine:
         ticker = params.get("ticker", "AAPL")
         date = params.get("date", time.strftime("%Y-%m-%d"))
         analysts = params.get("analysts", ["market", "news", "fundamentals"])
+
+        self._start_run_logger(run_id)
 
         logger.info(
             "Starting PIPELINE run=%s ticker=%s date=%s", run_id, ticker, date
@@ -279,6 +349,7 @@ class LangGraphEngine:
                 yield self._system_log(f"Warning: could not save analysis report for {ticker}: {exc}")
 
         logger.info("Completed PIPELINE run=%s", run_id)
+        self._finish_run_logger(run_id, get_ticker_dir(date, ticker))
 
     async def run_portfolio(
         self, run_id: str, params: Dict[str, Any]
@@ -286,6 +357,8 @@ class LangGraphEngine:
         """Run the portfolio manager workflow and stream events."""
         date = params.get("date", time.strftime("%Y-%m-%d"))
         portfolio_id = params.get("portfolio_id", "main_portfolio")
+
+        self._start_run_logger(run_id)
 
         logger.info(
             "Starting PORTFOLIO run=%s portfolio=%s date=%s",
@@ -432,6 +505,8 @@ class LangGraphEngine:
                 yield self._system_log(f"Warning: could not save portfolio reports: {exc}")
 
         logger.info("Completed PORTFOLIO run=%s", run_id)
+        from tradingagents.report_paths import get_daily_dir as _gddir
+        self._finish_run_logger(run_id, _gddir(date) / "portfolio")
 
     async def run_trade_execution(
         self, run_id: str, date: str, portfolio_id: str, decision: dict, prices: dict,
@@ -479,6 +554,8 @@ class LangGraphEngine:
         """Run the full auto pipeline: scan → pipeline → portfolio."""
         date = params.get("date", time.strftime("%Y-%m-%d"))
         force = params.get("force", False)
+
+        self._start_run_logger(run_id)
 
         logger.info("Starting AUTO run=%s date=%s force=%s", run_id, date, force)
         yield self._system_log(f"Starting full auto workflow for {date} (force={force})")
@@ -621,6 +698,8 @@ class LangGraphEngine:
                     yield evt
 
         logger.info("Completed AUTO run=%s", run_id)
+        from tradingagents.report_paths import get_daily_dir as _gddir2
+        self._finish_run_logger(run_id, _gddir2(date))
 
     # ------------------------------------------------------------------
     # Report helpers
@@ -973,7 +1052,9 @@ class LangGraphEngine:
                     full_input = str(inp)[:_MAX_FULL_LEN]
                     tool_input = self._truncate(str(inp))
 
-                logger.info("Tool start tool=%s node=%s run=%s", name, node_name, run_id)
+                service = _TOOL_SERVICE_MAP.get(name, "")
+
+                logger.info("Tool start tool=%s service=%s node=%s run=%s", name, service, node_name, run_id)
 
                 return {
                     "id": event.get("run_id", f"tool_{time.time_ns()}").strip(),
@@ -985,6 +1066,8 @@ class LangGraphEngine:
                     "message": f"▶ Tool: {name}"
                     + (f" | {tool_input}" if tool_input else ""),
                     "prompt": full_input,
+                    "service": service,
+                    "status": "running",
                     "metrics": {},
                 }
             except Exception:
@@ -996,13 +1079,36 @@ class LangGraphEngine:
             try:
                 full_output = ""
                 tool_output = ""
+                is_error = False
+                error_message = ""
+                graceful = False
                 out = (event.get("data") or {}).get("output")
                 if out is not None:
                     raw = self._extract_content(out)
                     full_output = raw[:_MAX_FULL_LEN]
                     tool_output = self._truncate(raw)
+                    # Detect errors in tool output
+                    if raw.startswith("Error") or raw.startswith("Error calling "):
+                        is_error = True
+                        error_message = raw[:500]
+                    # Detect graceful degradation (vendor fallback / empty-but-ok)
+                    if "gracefully" in raw.lower() or "fallback" in raw.lower() or "skipped" in raw.lower():
+                        graceful = True
+                # Some LangGraph versions pass errors through the event status
+                evt_status = (event.get("data") or {}).get("status")
+                if evt_status == "error":
+                    is_error = True
+                    if not error_message:
+                        error_message = tool_output or "Unknown tool error"
 
-                logger.info("Tool end tool=%s node=%s run=%s", name, node_name, run_id)
+                service = _TOOL_SERVICE_MAP.get(name, "")
+                status = "error" if is_error else ("graceful_skip" if graceful else "success")
+                icon = "✗" if is_error else ("⚠" if graceful else "✓")
+
+                logger.info(
+                    "Tool end tool=%s status=%s node=%s run=%s",
+                    name, status, node_name, run_id,
+                )
 
                 return {
                     "id": f"{event.get('run_id', 'tool_end')}_{time.time_ns()}",
@@ -1011,9 +1117,12 @@ class LangGraphEngine:
                     "type": "tool_result",
                     "agent": node_name.upper(),
                     "identifier": identifier,
-                    "message": f"✓ Tool result: {name}"
+                    "message": f"{icon} Tool result: {name}"
                     + (f" | {tool_output}" if tool_output else ""),
                     "response": full_output,
+                    "service": service,
+                    "status": status,
+                    "error": error_message if is_error else None,
                     "metrics": {},
                 }
             except Exception:
