@@ -6,10 +6,11 @@ from tradingagents.agents.utils.scanner_states import ScannerState
 
 
 class ScannerGraphSetup:
-    """Sets up the 3-phase scanner graph with LLM agent nodes.
+    """Sets up the 4-phase scanner graph with LLM agent nodes.
 
-    Phase 1: geopolitical_scanner, market_movers_scanner, sector_scanner (parallel fan-out)
-    Phase 2: industry_deep_dive (fan-in from all three Phase 1 nodes)
+    Phase 1: geopolitical_scanner, market_movers_scanner, sector_scanner,
+             smart_money_scanner (parallel fan-out)
+    Phase 2: industry_deep_dive (fan-in from all four Phase 1 nodes)
     Phase 3: macro_synthesis -> END
     """
 
@@ -20,6 +21,7 @@ class ScannerGraphSetup:
                 - geopolitical_scanner
                 - market_movers_scanner
                 - sector_scanner
+                - smart_money_scanner
                 - industry_deep_dive
                 - macro_synthesis
         """
@@ -40,11 +42,13 @@ class ScannerGraphSetup:
         workflow.add_edge(START, "geopolitical_scanner")
         workflow.add_edge(START, "market_movers_scanner")
         workflow.add_edge(START, "sector_scanner")
+        workflow.add_edge(START, "smart_money_scanner")
 
-        # Fan-in: all three Phase 1 nodes must complete before Phase 2
+        # Fan-in: all four Phase 1 nodes must complete before Phase 2
         workflow.add_edge("geopolitical_scanner", "industry_deep_dive")
         workflow.add_edge("market_movers_scanner", "industry_deep_dive")
         workflow.add_edge("sector_scanner", "industry_deep_dive")
+        workflow.add_edge("smart_money_scanner", "industry_deep_dive")
 
         # Phase 2 -> Phase 3 -> END
         workflow.add_edge("industry_deep_dive", "macro_synthesis")
