@@ -647,7 +647,10 @@ class TestRunAutoTickerSource(unittest.TestCase):
             fake_daily.exists.return_value = False
             mock_gdd.return_value = fake_daily
 
-            mock_rs_cls.return_value = self._make_mock_store(scan_data)
+            mock_store = MagicMock()
+            mock_store.load_scan.return_value = scan_data
+            mock_store.load_analysis.return_value = None  # prevent truthy skip of pipeline phase
+            mock_rs_cls.return_value = mock_store
 
             asyncio.run(_collect(engine.run_auto("auto1", {"date": "2026-01-01"})))
 
@@ -723,7 +726,11 @@ class TestRunAutoTickerSource(unittest.TestCase):
             fake_mdir.mkdir = MagicMock()
             mock_gmd.return_value = fake_mdir
 
-            mock_rs_cls.return_value = self._make_mock_store(scan_data={})
+            mock_store = MagicMock()
+            mock_store.load_scan.return_value = {}
+            mock_store.load_execution_result.return_value = None  # prevent truthy skip of Phase 3
+            mock_store.load_pm_decision.return_value = None
+            mock_rs_cls.return_value = mock_store
 
             asyncio.run(_collect(engine.run_auto("auto1", {"date": "2026-01-01"})))
 
@@ -759,7 +766,11 @@ class TestRunAutoTickerSource(unittest.TestCase):
             fake_mdir.mkdir = MagicMock()
             mock_gmd.return_value = fake_mdir
 
-            mock_rs_cls.return_value = self._make_mock_store(scan_data={})
+            mock_store = MagicMock()
+            mock_store.load_scan.return_value = {}
+            mock_store.load_execution_result.return_value = None  # prevent truthy skip of Phase 3
+            mock_store.load_pm_decision.return_value = None
+            mock_rs_cls.return_value = mock_store
 
             params = {"ticker": "GOOG", "portfolio_id": "my_portfolio", "date": "2026-01-01"}
             asyncio.run(_collect(engine.run_auto("auto1", params)))
