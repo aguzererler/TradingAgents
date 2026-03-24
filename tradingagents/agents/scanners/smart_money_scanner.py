@@ -1,12 +1,13 @@
-"""Smart Money Scanner — Phase 1 parallel node.
+"""Smart Money Scanner — runs sequentially after sector_scanner.
 
 Runs three Finviz screeners to find institutional footprints:
   1. Insider buying (open-market purchases by insiders)
   2. Unusual volume (2x+ normal, price > $10)
   3. Breakout accumulation (52-week highs on 2x+ volume)
 
-Each screener tool has no parameters — filters are hardcoded to prevent LLM
-hallucinations. Results feed into macro_synthesis for the "Golden Overlap" step.
+Positioned after sector_scanner so it can use sector rotation data as context
+when interpreting and prioritizing Finviz signals. Each screener tool has no
+parameters — filters are hardcoded to prevent LLM hallucinations.
 """
 
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
@@ -28,6 +29,15 @@ def create_smart_money_scanner(llm):
             get_breakout_accumulation_stocks,
         ]
 
+        # Inject sector rotation context — available because this node runs
+        # after sector_scanner completes.
+        sector_context = state.get("sector_performance_report", "")
+        sector_section = (
+            f"\n\nSector rotation context from the Sector Scanner:\n{sector_context}"
+            if sector_context
+            else ""
+        )
+
         system_message = (
             "You are a quantitative analyst hunting for 'Smart Money' institutional footprints in today's market. "
             "You MUST call all three of these tools exactly once each:\n"
@@ -36,10 +46,13 @@ def create_smart_money_scanner(llm):
             "3. `get_breakout_accumulation_stocks` — institutional breakout accumulation pattern\n\n"
             "After running all three scans, write a concise report highlighting the best 5 to 8 specific tickers "
             "you found. For each ticker, state: which scan flagged it, its sector, and why it is anomalous "
-            "(e.g., 'XYZ has heavy insider buying in a beaten-down energy sector despite macro headwinds'). "
+            "(e.g., 'XYZ has heavy insider buying in a sector that is showing strong rotation momentum'). "
+            "Use the sector rotation context below to prioritize tickers from leading sectors and flag any "
+            "smart money signals that confirm or contradict the sector trend. "
             "If any scan returned unavailable or empty, note it briefly and focus on the remaining results. "
             "This report will be used by the Macro Strategist to identify high-conviction candidates via the "
             "Golden Overlap (bottom-up smart money signals cross-referenced with top-down macro themes)."
+            f"{sector_section}"
         )
 
         prompt = ChatPromptTemplate.from_messages(

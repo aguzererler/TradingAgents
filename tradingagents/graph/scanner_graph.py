@@ -16,11 +16,11 @@ from .scanner_setup import ScannerGraphSetup
 
 
 class ScannerGraph:
-    """Orchestrates the 4-phase macro scanner pipeline.
+    """Orchestrates the macro scanner pipeline.
 
-    Phase 1 (parallel): geopolitical_scanner, market_movers_scanner, sector_scanner,
-                        smart_money_scanner
-    Phase 2: industry_deep_dive (fan-in from Phase 1)
+    Phase 1a (parallel): geopolitical_scanner, market_movers_scanner, sector_scanner
+    Phase 1b (sequential after sector): smart_money_scanner
+    Phase 2: industry_deep_dive (fan-in from all Phase 1 nodes)
     Phase 3: macro_synthesis -> END
     """
 
