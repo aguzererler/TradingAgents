@@ -150,7 +150,7 @@ class ReflexionMemory:
         if self._col is not None:
             from pymongo import DESCENDING
 
-            result = self._col.update_one(
+            doc = self._col.find_one_and_update(
                 {
                     "ticker": ticker.upper(),
                     "decision_date": decision_date,
@@ -159,19 +159,7 @@ class ReflexionMemory:
                 {"$set": {"outcome": outcome}},
                 sort=[("created_at", DESCENDING)],
             )
-            # update_one with sort is not supported, use find_one_and_update
-            if not hasattr(result, "modified_count") or result.modified_count == 0:
-                doc = self._col.find_one_and_update(
-                    {
-                        "ticker": ticker.upper(),
-                        "decision_date": decision_date,
-                        "outcome": None,
-                    },
-                    {"$set": {"outcome": outcome}},
-                    sort=[("created_at", DESCENDING)],
-                )
-                return doc is not None
-            return result.modified_count > 0
+            return doc is not None
         else:
             return self._update_local_outcome(ticker.upper(), decision_date, outcome)
 
