@@ -32,9 +32,11 @@ parameter.
 **Problem**: These methods exist on `RunLogger` but nothing invokes them from
 `run_tool_loop` or `route_to_vendor`.
 
-**Status**: *Deferred to a follow-up PR*.  Wiring requires changes to the core
-`tradingagents/` library layer where `run_tool_loop` and `route_to_vendor`
-live.  The callback-based LLM capture (Finding 1) is the priority.
+**Solution**: Both call-sites are now wired:
+- `run_tool_loop` (`tradingagents/agents/utils/tool_runner.py`) calls
+  `rl.log_tool_call()` on every tool invocation (success, failure, unknown tool).
+- `route_to_vendor` (`tradingagents/dataflows/interface.py`) calls
+  `rl.log_vendor_call()` on every vendor call (success and failure with fallback).
 
 ### Finding 3 — `threading.local` incompatible with asyncio
 
@@ -157,4 +159,3 @@ if isinstance(reviews, dict):
 
 - Plan `pymongo` → `motor` migration before production deployment.
 - Add TTL index strategy after retention policy is decided.
-- Wire `log_tool_call` / `log_vendor_call` in a follow-up PR.
