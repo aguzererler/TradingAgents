@@ -99,8 +99,8 @@ class ReportStore:
         if self._run_id:
             return daily / "runs" / self._run_id
 
-        # Read path: check latest.json pointer
-        latest_id = read_latest_pointer(date)
+        # Read path: check latest.json pointer (using our base_dir)
+        latest_id = read_latest_pointer(date, base_dir=self._base_dir)
         if latest_id:
             candidate = daily / "runs" / latest_id
             if candidate.exists():
@@ -112,7 +112,7 @@ class ReportStore:
     def _update_latest(self, date: str) -> None:
         """Update the latest.json pointer if run_id is set."""
         if self._run_id:
-            write_latest_pointer(date, self._run_id)
+            write_latest_pointer(date, self._run_id, base_dir=self._base_dir)
 
     def _portfolio_dir(self, date: str, *, for_write: bool = False) -> Path:
         """Return the portfolio subdirectory for a given date.

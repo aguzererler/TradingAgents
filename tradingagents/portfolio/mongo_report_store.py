@@ -71,6 +71,7 @@ class MongoReportStore:
             self._col: Collection = self._db[_REPORTS_COLLECTION]
         except Exception as exc:
             raise ReportStoreError(f"MongoDB connection failed: {exc}") from exc
+        self.ensure_indexes()
 
     @property
     def run_id(self) -> str | None:
@@ -257,10 +258,14 @@ class MongoReportStore:
         return deleted
 
     def list_pm_decisions(self, portfolio_id: str) -> list[dict[str, Any]]:
-        """Return all PM decisions for a portfolio, newest first."""
+        """Return all PM decisions for a portfolio, newest first.
+
+        Excludes ``_id`` (BSON ObjectId) which is not JSON-serializable.
+        """
         return list(
             self._col.find(
                 {"report_type": "pm_decision", "portfolio_id": portfolio_id},
+                {"_id": 0},
                 sort=[("date", DESCENDING), ("created_at", DESCENDING)],
             )
         )

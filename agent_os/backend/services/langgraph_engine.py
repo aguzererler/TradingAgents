@@ -159,7 +159,7 @@ class LangGraphEngine:
         short_rid = generate_run_id()
         store = create_report_store(run_id=short_rid)
 
-        self._start_run_logger(run_id)
+        rl = self._start_run_logger(run_id)
         scanner = ScannerGraph(config=self.config)
 
         logger.info("Starting SCAN run=%s date=%s rid=%s", run_id, date, short_rid)
@@ -180,7 +180,9 @@ class LangGraphEngine:
         self._run_identifiers[run_id] = "MARKET"
         final_state: Dict[str, Any] = {}
 
-        async for event in scanner.graph.astream_events(initial_state, version="v2"):
+        async for event in scanner.graph.astream_events(
+            initial_state, version="v2", config={"callbacks": [rl.callback]}
+        ):
             # Capture the complete final state from the root graph's terminal event.
             # LangGraph v2 emits one root-level on_chain_end (parent_ids=[], no
             # langgraph_node in metadata) whose data.output is the full accumulated state.
@@ -275,7 +277,7 @@ class LangGraphEngine:
         short_rid = generate_run_id()
         store = create_report_store(run_id=short_rid)
 
-        self._start_run_logger(run_id)
+        rl = self._start_run_logger(run_id)
 
         logger.info(
             "Starting PIPELINE run=%s ticker=%s date=%s rid=%s", run_id, ticker, date, short_rid
@@ -297,7 +299,10 @@ class LangGraphEngine:
         async for event in graph_wrapper.graph.astream_events(
             initial_state,
             version="v2",
-            config={"recursion_limit": graph_wrapper.propagator.max_recur_limit},
+            config={
+                "recursion_limit": graph_wrapper.propagator.max_recur_limit,
+                "callbacks": [rl.callback],
+            },
         ):
             # Capture the complete final state from the root graph's terminal event.
             if self._is_root_chain_end(event):
@@ -376,7 +381,7 @@ class LangGraphEngine:
         # A reader store with no run_id resolves to the latest run for loading
         reader_store = create_report_store()
 
-        self._start_run_logger(run_id)
+        rl = self._start_run_logger(run_id)
 
         logger.info(
             "Starting PORTFOLIO run=%s portfolio=%s date=%s rid=%s",
@@ -467,7 +472,7 @@ class LangGraphEngine:
         final_state: Dict[str, Any] = {}
 
         async for event in portfolio_graph.graph.astream_events(
-            initial_state, version="v2"
+            initial_state, version="v2", config={"callbacks": [rl.callback]}
         ):
             if self._is_root_chain_end(event):
                 output = (event.get("data") or {}).get("output")
@@ -500,7 +505,11 @@ class LangGraphEngine:
                 if holding_reviews_str:
                     try:
                         reviews = json.loads(holding_reviews_str) if isinstance(holding_reviews_str, str) else holding_reviews_str
-                        store.save_holding_review(date, portfolio_id, reviews)
+                        if isinstance(reviews, dict):
+                            for ticker, review_data in reviews.items():
+                                store.save_holding_review(date, ticker, review_data)
+                        else:
+                            logger.warning("Unexpected holding_reviews format run=%s: %s", run_id, type(reviews))
                     except Exception as exc:
                         logger.warning("Failed to save holding_reviews run=%s: %s", run_id, exc)
 
@@ -591,7 +600,7 @@ class LangGraphEngine:
         # its own writer store with a fresh run_id internally.
         store = create_report_store()
 
-        self._start_run_logger(run_id)
+        self._start_run_logger(run_id)  # auto-run's own logger; sub-phases create their own
 
         logger.info("Starting AUTO run=%s date=%s force=%s", run_id, date, force)
         yield self._system_log(f"Starting full auto workflow for {date} (force={force})")

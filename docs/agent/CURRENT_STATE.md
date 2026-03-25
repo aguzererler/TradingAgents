@@ -1,9 +1,19 @@
 # Current Milestone
 
-Smart Money Scanner added to scanner pipeline (Phase 1b). MongoDB report store + run-ID namespacing + reflexion memory added. 18 agent factories. All tests passing (872 passed, 14 skipped).
+Smart Money Scanner added to scanner pipeline (Phase 1b). MongoDB report store + run-ID namespacing + reflexion memory added. PR#106 review findings addressed (ADR 016). 18 agent factories. All tests passing (886 passed, 14 skipped).
 
 # Recent Progress
 
+- **PR#106 review fixes (ADR 016)**:
+  - Fix 1: `save_holding_review` iteration — was passing `portfolio_id` as ticker; now iterates per ticker
+  - Fix 2: `contextvars.ContextVar` replaces `threading.local` for RunLogger — async-safe
+  - Fix 3: `list_pm_decisions` — added `{"_id": 0}` projection to exclude non-serializable ObjectId
+  - Fix 4: `ReflexionMemory.created_at` — native `datetime` for MongoDB, ISO string for local JSON fallback
+  - Fix 5: `write/read_latest_pointer` — accepts `base_dir` parameter; `ReportStore` passes its `_base_dir`
+  - Fix 6: `RunLogger.callback` — wired into all 3 `astream_events()` calls (scan, pipeline, portfolio)
+  - Fix 7: `MongoReportStore.__init__` — calls `ensure_indexes()` automatically
+  - `docs/agent/decisions/016-pr106-review-findings.md` — full writeup of all 13 findings and resolutions
+  - Tests: 14 new tests covering all 7 fixes
 - **MongoDB Report Store + Run-ID + Reflexion (current branch)**:
   - `tradingagents/report_paths.py` — All path helpers accept optional `run_id` for run-scoped directories; `latest.json` pointer mechanism
   - `tradingagents/portfolio/report_store.py` — `ReportStore` supports `run_id` + `latest.json` pointer for read resolution

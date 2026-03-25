@@ -112,11 +112,13 @@ class ReflexionMemory:
             "source": source,
             "run_id": run_id,
             "outcome": None,
-            "created_at": datetime.now(timezone.utc).isoformat(),
+            "created_at": datetime.now(timezone.utc),
         }
         if self._col is not None:
             self._col.insert_one(doc)
         else:
+            # Local JSON fallback uses ISO string (JSON has no datetime type)
+            doc["created_at"] = doc["created_at"].isoformat()
             self._append_local(doc)
 
     # ------------------------------------------------------------------

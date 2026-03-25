@@ -46,12 +46,19 @@ def generate_run_id() -> str:
     return uuid.uuid4().hex[:8]
 
 
-def write_latest_pointer(date: str, run_id: str) -> Path:
-    """Write ``reports/daily/{date}/latest.json`` pointing to *run_id*.
+def write_latest_pointer(date: str, run_id: str, base_dir: Path | None = None) -> Path:
+    """Write ``{base}/daily/{date}/latest.json`` pointing to *run_id*.
+
+    Args:
+        date:     ISO date string.
+        run_id:   Short identifier for the run.
+        base_dir: Reports root directory.  Falls back to ``REPORTS_ROOT``
+                  when ``None``.
 
     Returns the path of the written file.
     """
-    daily = REPORTS_ROOT / "daily" / date
+    root = base_dir or REPORTS_ROOT
+    daily = root / "daily" / date
     daily.mkdir(parents=True, exist_ok=True)
     pointer = daily / "latest.json"
     payload = {
@@ -62,9 +69,16 @@ def write_latest_pointer(date: str, run_id: str) -> Path:
     return pointer
 
 
-def read_latest_pointer(date: str) -> str | None:
-    """Read the latest run_id for *date*, or ``None`` if no pointer exists."""
-    pointer = REPORTS_ROOT / "daily" / date / "latest.json"
+def read_latest_pointer(date: str, base_dir: Path | None = None) -> str | None:
+    """Read the latest run_id for *date*, or ``None`` if no pointer exists.
+
+    Args:
+        date:     ISO date string.
+        base_dir: Reports root directory.  Falls back to ``REPORTS_ROOT``
+                  when ``None``.
+    """
+    root = base_dir or REPORTS_ROOT
+    pointer = root / "daily" / date / "latest.json"
     if not pointer.exists():
         return None
     try:
