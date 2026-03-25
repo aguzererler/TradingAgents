@@ -63,7 +63,9 @@ class MongoReportStore:
         connection_string: str,
         db_name: str = "tradingagents",
         run_id: str | None = None,
+        flow_id: str | None = None,
     ) -> None:
+        self._flow_id = flow_id
         self._run_id = run_id
         try:
             self._client: MongoClient = MongoClient(connection_string)
@@ -74,8 +76,14 @@ class MongoReportStore:
         self.ensure_indexes()
 
     @property
+    def flow_id(self) -> str | None:
+        """The flow identifier set on this store, if any."""
+        return self._flow_id
+
+    @property
     def run_id(self) -> str | None:
-        return self._run_id
+        """The run/flow identifier (flow_id takes precedence for backward compat)."""
+        return self._flow_id or self._run_id
 
     def ensure_indexes(self) -> None:
         """Create indexes for efficient querying (idempotent)."""
@@ -86,6 +94,7 @@ class MongoReportStore:
         self._col.create_index(
             [("date", DESCENDING), ("report_type", 1), ("portfolio_id", 1)]
         )
+        self._col.create_index("flow_id")
         self._col.create_index("run_id")
         self._col.create_index("created_at")
 
@@ -105,7 +114,8 @@ class MongoReportStore:
     ) -> str:
         """Insert a report document.  Returns the inserted document's _id."""
         doc = {
-            "run_id": self._run_id,
+            "flow_id": self._flow_id,
+            "run_id": self._run_id or self._flow_id,  # backward compat
             "date": date,
             "report_type": report_type,
             "ticker": ticker.upper() if ticker else None,
@@ -143,6 +153,8 @@ class MongoReportStore:
             query["portfolio_id"] = portfolio_id
         if run_id:
             query["run_id"] = run_id
+        elif self._flow_id:
+            query["flow_id"] = self._flow_id
 
         doc = self._col.find_one(query, sort=[("created_at", DESCENDING)])
         if doc is None:
