@@ -58,7 +58,7 @@ def create_report_store(
                 db_name=db,
                 run_id=run_id,
             )
-            store.ensure_indexes()
+            # ensure_indexes() is called automatically in __init__
             logger.info("Using MongoDB report store (db=%s, run_id=%s)", db, run_id)
             return store
         except Exception:
