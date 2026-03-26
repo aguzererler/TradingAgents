@@ -7,7 +7,7 @@ def load_into_memory(lesson_store: LessonStore,
     """Populate memory with ONLY negative-sentiment lessons. Returns count loaded."""
     lessons = lesson_store.load_all()
     pairs = [
-        (l["situation"], l["advice"])
+        (l.get("situation", ""), l.get("screening_advice", l.get("advice", "")))
         for l in lessons
         if l.get("sentiment") == "negative"
     ]
