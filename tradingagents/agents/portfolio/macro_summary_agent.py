@@ -35,8 +35,9 @@ def create_macro_summary_agent(llm, macro_memory: MacroMemory | None = None):
     def macro_summary_node(state: dict) -> dict:
         scan_summary = state.get("scan_summary") or {}
 
-        # Guard: abort early if scan data is absent or error-bearing
-        if not scan_summary or "error" in scan_summary:
+        # Guard: abort early if scan data is absent or *only* contains an error
+        # (partial failures with real data + an "error" key are still usable)
+        if not scan_summary or (isinstance(scan_summary, dict) and scan_summary.keys() == {"error"}):
             return {
                 "messages": [],
                 "macro_brief": "NO DATA AVAILABLE - ABORT MACRO",

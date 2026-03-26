@@ -97,12 +97,16 @@ class TestEmptyStateGuards:
         })
         assert result["macro_brief"] == "NO DATA AVAILABLE - ABORT MACRO"
 
-    def test_macro_agent_scan_with_data_and_error_key_triggers_sentinel(self):
-        """scan_summary with both real data AND an 'error' key triggers NO DATA guard.
+    def test_macro_agent_scan_with_data_and_error_key_proceeds(self):
+        """scan_summary with real data AND an 'error' key is NOT discarded.
 
-        The guard checks for the presence of 'error', not its value.
+        Only scan_summary whose *only* key is 'error' triggers the guard.
+        Partial failures with usable data should still be compressed.
         """
-        mock_llm = MagicMock()
+        from langchain_core.messages import AIMessage
+        from langchain_core.runnables import RunnableLambda
+
+        mock_llm = RunnableLambda(lambda _: AIMessage(content="MACRO REGIME: neutral\nPartial data processed"))
         agent = create_macro_summary_agent(mock_llm)
         result = agent({
             "scan_summary": {
@@ -112,4 +116,5 @@ class TestEmptyStateGuards:
             "messages": [],
             "analysis_date": "2026-03-26",
         })
-        assert result["macro_brief"] == "NO DATA AVAILABLE - ABORT MACRO"
+        # Should NOT be sentinel — the LLM was invoked
+        assert result["macro_brief"] != "NO DATA AVAILABLE - ABORT MACRO"

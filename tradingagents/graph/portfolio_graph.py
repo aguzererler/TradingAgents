@@ -67,7 +67,10 @@ class PortfolioGraph:
             "review_holdings": create_holding_reviewer(mid_llm),
             "macro_summary":   create_macro_summary_agent(mid_llm, macro_mem),
             "micro_summary":   create_micro_summary_agent(mid_llm, micro_mem),
-            "pm_decision":     create_pm_decision_agent(deep_llm, config=portfolio_config),
+            "pm_decision":     create_pm_decision_agent(
+                deep_llm, config=portfolio_config,
+                macro_memory=macro_mem, micro_memory=micro_mem,
+            ),
         }
 
         setup = PortfolioGraphSetup(

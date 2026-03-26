@@ -43,6 +43,9 @@ def create_micro_summary_agent(llm, micro_memory: ReflexionMemory | None = None)
         holding_reviews: dict = _parse_json_safely(holding_reviews_raw, default={})
         candidates: list = _parse_json_safely(candidates_raw, default=[])
 
+        # Optional: per-ticker trading graph analyses (fundamentals, technicals, etc.)
+        ticker_analyses: dict = state.get("ticker_analyses") or {}
+
         # ------------------------------------------------------------------
         # Collect all tickers and retrieve per-ticker memory
         # ------------------------------------------------------------------
@@ -71,8 +74,12 @@ def create_micro_summary_agent(llm, micro_memory: ReflexionMemory | None = None)
             rec = review.get("recommendation", "?")
             confidence = review.get("confidence", "")
             label = f"HOLDING | {rec} | conf:{confidence}" if confidence else f"HOLDING | {rec}"
+            # Enrich with trading graph analysis if available
+            analysis = ticker_analyses.get(ticker, {}) if isinstance(ticker_analyses, dict) else {}
+            key_number = analysis.get("final_trade_decision", "")[:80] if isinstance(analysis, dict) else ""
+            key_number = key_number or "-"
             memory_snippet = (ticker_memory_dict.get(ticker, "")[:100] or "no memory")
-            table_rows.append(f"{ticker} | {label} | - | {memory_snippet}")
+            table_rows.append(f"{ticker} | {label} | {key_number} | {memory_snippet}")
 
         for c in candidates:
             if not isinstance(c, dict):
