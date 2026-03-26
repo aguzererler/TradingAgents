@@ -27,7 +27,13 @@ import time
 from rich import box
 from rich.align import Align
 from rich.rule import Rule
-from rich.progress import Progress, SpinnerColumn, BarColumn, TextColumn, TimeElapsedColumn
+from rich.progress import (
+    Progress,
+    SpinnerColumn,
+    BarColumn,
+    TextColumn,
+    TimeElapsedColumn,
+)
 
 from tradingagents.graph.trading_graph import TradingAgentsGraph
 from tradingagents.report_paths import get_daily_dir, get_market_dir, get_ticker_dir
@@ -141,6 +147,8 @@ class MessageBuffer:
         This prevents interim updates (like debate rounds) from counting as completed.
         """
         count = 0
+        # Optimized: Iterating over self.REPORT_SECTIONS.items() is faster than iterating
+        # over self.report_sections and checking membership.
         for section, (_, finalizing_agent) in self.REPORT_SECTIONS.items():
             if self.report_sections.get(section) is not None:
                 if self.agent_status.get(finalizing_agent) == "completed":
@@ -492,7 +500,9 @@ def _ask_provider_thinking_config(provider: str):
 def get_user_selections():
     """Get all user selections before starting the analysis display."""
     # Display ASCII art welcome message
-    with open(Path(__file__).parent / "static" / "welcome.txt", "r", encoding="utf-8") as f:
+    with open(
+        Path(__file__).parent / "static" / "welcome.txt", "r", encoding="utf-8"
+    ) as f:
         welcome_ascii = f.read()
 
     # Create welcome box content
@@ -909,6 +919,7 @@ def extract_content_string(content):
     """Extract string content from various message formats.
     Returns None if no meaningful text content is found.
     """
+
     def is_empty(val):
         """Check if value is empty using Python's truthiness."""
         if val is None or val == "":
@@ -1119,9 +1130,14 @@ def run_analysis():
                 content = obj.report_sections[section_name]
                 if content:
                     file_name = f"{section_name}.md"
-                    text = "\n".join(str(item) for item in content) if isinstance(content, list) else content
+                    text = (
+                        "\n".join(str(item) for item in content)
+                        if isinstance(content, list)
+                        else content
+                    )
                     with open(report_dir / file_name, "w", encoding="utf-8") as f:
                         f.write(text)
+
         return wrapper
 
     message_buffer.add_message = save_message_decorator(message_buffer, "add_message")
@@ -1635,7 +1651,9 @@ def run_pipeline(
         console=console,
         transient=False,
     ) as progress:
-        overall = progress.add_task("[bold]Pipeline progress[/bold]", total=len(candidates))
+        overall = progress.add_task(
+            "[bold]Pipeline progress[/bold]", total=len(candidates)
+        )
 
         def on_done(result, done_count, total_count):
             ticker_elapsed = result.elapsed_seconds
@@ -1645,7 +1663,9 @@ def run_pipeline(
                     f"  [dim]failed ({ticker_elapsed:.0f}s) — {result.error[:80]}[/dim]"
                 )
             else:
-                decision_preview = str(result.final_trade_decision)[:70].replace("\n", " ")
+                decision_preview = str(result.final_trade_decision)[:70].replace(
+                    "\n", " "
+                )
                 console.print(
                     f"  [green]✓ {result.ticker}[/green]"
                     f"  [dim]({done_count}/{total_count}, {ticker_elapsed:.0f}s)[/dim]"
@@ -1656,7 +1676,10 @@ def run_pipeline(
         try:
             results = asyncio.run(
                 run_all_tickers(
-                    candidates, macro_context, config, analysis_date,
+                    candidates,
+                    macro_context,
+                    config,
+                    analysis_date,
                     max_concurrent=max_concurrent,
                     on_ticker_done=on_done,
                 )
@@ -1669,7 +1692,6 @@ def run_pipeline(
     console.print(
         f"\n[bold green]All {len(candidates)} ticker(s) finished in {elapsed_total:.0f}s[/bold green]\n"
     )
-
 
     save_results(results, macro_context, output_dir)
 
@@ -1770,7 +1792,11 @@ def run_portfolio(portfolio_id: str, date: str, macro_path: Path):
 
     # scan_summary["stocks_to_investigate"] is a list of dicts, we just want the tickers
     candidate_dicts = scan_summary.get("stocks_to_investigate", [])
-    candidate_tickers = [c.get("ticker") for c in candidate_dicts if isinstance(c, dict) and "ticker" in c]
+    candidate_tickers = [
+        c.get("ticker")
+        for c in candidate_dicts
+        if isinstance(c, dict) and "ticker" in c
+    ]
     holding_tickers = [h.ticker for h in holdings]
 
     all_tickers = set(candidate_tickers + holding_tickers)
@@ -1835,19 +1861,27 @@ def portfolio():
 
 @app.command()
 def init_portfolio(
-    name: str = typer.Option("My Portfolio", "--name", "-n", help="Name of the new portfolio"),
+    name: str = typer.Option(
+        "My Portfolio", "--name", "-n", help="Name of the new portfolio"
+    ),
     cash: float = typer.Option(100000.0, "--cash", "-c", help="Starting cash balance"),
 ):
     """Create a completely new portfolio in the database and return its UUID."""
     from tradingagents.portfolio import PortfolioRepository
-    
-    console.print(f"[cyan]Initializing new portfolio '{name}' with ${cash:,.2f} cash...[/cyan]")
+
+    console.print(
+        f"[cyan]Initializing new portfolio '{name}' with ${cash:,.2f} cash...[/cyan]"
+    )
     repo = PortfolioRepository()
     try:
         portfolio = repo.create_portfolio(name, initial_cash=cash)
         console.print("[green]Portfolio created successfully![/green]")
-        console.print(f"\n[bold white]Your new Portfolio UUID is:[/bold white] [bold magenta]{portfolio.portfolio_id}[/bold magenta]")
-        console.print("\n[dim]Copy this UUID and paste it when the Portfolio Manager asks for 'Portfolio ID'.[/dim]\n")
+        console.print(
+            f"\n[bold white]Your new Portfolio UUID is:[/bold white] [bold magenta]{portfolio.portfolio_id}[/bold magenta]"
+        )
+        console.print(
+            "\n[dim]Copy this UUID and paste it when the Portfolio Manager asks for 'Portfolio ID'.[/dim]\n"
+        )
     except Exception as e:
         console.print(f"[red]Failed to create portfolio: {e}[/red]")
         raise typer.Exit(1)
@@ -1945,9 +1979,15 @@ def auto(
 
 @app.command(name="estimate-api")
 def estimate_api(
-    command: str = typer.Argument("all", help="Command to estimate: analyze, scan, pipeline, or all"),
-    num_tickers: int = typer.Option(5, "--tickers", "-t", help="Expected tickers for pipeline estimate"),
-    num_indicators: int = typer.Option(6, "--indicators", "-i", help="Expected indicator calls per ticker"),
+    command: str = typer.Argument(
+        "all", help="Command to estimate: analyze, scan, pipeline, or all"
+    ),
+    num_tickers: int = typer.Option(
+        5, "--tickers", "-t", help="Expected tickers for pipeline estimate"
+    ),
+    num_indicators: int = typer.Option(
+        6, "--indicators", "-i", help="Expected indicator calls per ticker"
+    ),
 ):
     """Estimate API usage per vendor (helps decide if AV premium is needed)."""
     from tradingagents.api_usage import (
@@ -1959,7 +1999,9 @@ def estimate_api(
         AV_PREMIUM_PER_MINUTE,
     )
 
-    console.print(Panel("[bold green]API Usage Estimation[/bold green]", border_style="green"))
+    console.print(
+        Panel("[bold green]API Usage Estimation[/bold green]", border_style="green")
+    )
     console.print(
         f"[dim]Alpha Vantage tiers: FREE = {AV_FREE_DAILY_LIMIT} calls/day | "
         f"Premium ($30/mo) = {AV_PREMIUM_PER_MINUTE} calls/min, unlimited daily[/dim]\n"
@@ -1971,14 +2013,20 @@ def estimate_api(
     if command in ("scan", "all"):
         estimates.append(estimate_scan())
     if command in ("pipeline", "all"):
-        estimates.append(estimate_pipeline(num_tickers=num_tickers, num_indicators=num_indicators))
+        estimates.append(
+            estimate_pipeline(num_tickers=num_tickers, num_indicators=num_indicators)
+        )
 
     if not estimates:
-        console.print(f"[red]Unknown command: {command}. Use: analyze, scan, pipeline, or all[/red]")
+        console.print(
+            f"[red]Unknown command: {command}. Use: analyze, scan, pipeline, or all[/red]"
+        )
         raise typer.Exit(1)
 
     for est in estimates:
-        console.print(Panel(format_estimate(est), title=est.command, border_style="cyan"))
+        console.print(
+            Panel(format_estimate(est), title=est.command, border_style="cyan")
+        )
 
     # Overall AV assessment
     console.print("\n[bold]Alpha Vantage Subscription Recommendation:[/bold]")
