@@ -1382,7 +1382,7 @@ def run_analysis():
         display_complete_report(final_state)
 
 
-def run_reflect(date: str | None = None, horizons_str: str = "30,60"):
+def run_reflect(date: str | None = None, horizons_str: str = "30,90"):
     """Core reflect logic. Callable from tests."""
     from tradingagents.portfolio.lesson_store import LessonStore
     from tradingagents.portfolio.selection_reflector import reflect_on_scan
@@ -1414,17 +1414,25 @@ def run_reflect(date: str | None = None, horizons_str: str = "30,60"):
         table.add_column("Scan Date")
         table.add_column("Horizon")
         table.add_column("Alpha", style="magenta")
+        table.add_column("MFE / MAE")
         table.add_column("Sentiment")
-        table.add_column("Advice")
+        table.add_column("Screening Advice")
+        table.add_column("Exit Advice")
         for l in all_lessons:
             color = "green" if l.get("sentiment") == "positive" else ("red" if l.get("sentiment") == "negative" else "yellow")
+
+            alpha_str = f"{l.get('terminal_return_pct', 0.0) - l.get('spy_return_pct', 0.0):+.1f}%"
+            mfe_mae_str = f"+{l.get('mfe_pct', 0.0):.1f}% / {l.get('mae_pct', 0.0):.1f}%"
+
             table.add_row(
                 l.get("ticker", ""),
                 l.get("scan_date", ""),
                 str(l.get("horizon_days", "")),
-                f"{l.get('alpha_pct', 0.0):+.1f}%",
+                alpha_str,
+                mfe_mae_str,
                 f"[{color}]{l.get('sentiment', '')}[/{color}]",
-                l.get("advice", "")
+                l.get("screening_advice", ""),
+                l.get("exit_advice", "")
             )
         console.print(table)
 
@@ -1779,7 +1787,7 @@ def scan(
 @app.command()
 def reflect(
     date: Optional[str] = typer.Option(None, "--date", "-d", help="Reference date YYYY-MM-DD"),
-    horizons: str = typer.Option("30,60", "--horizons", help="Comma-separated lookback days"),
+    horizons: str = typer.Option("30,90", "--horizons", help="Comma-separated lookback days"),
 ):
     """Reflect on past scan picks: compute returns, fetch news, generate screening lessons."""
     run_reflect(date=date, horizons_str=horizons)
