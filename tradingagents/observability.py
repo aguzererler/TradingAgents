@@ -218,22 +218,14 @@ class RunLogger:
         _py_logger.debug("%s | %s", evt.kind, json.dumps(evt.data))
 
         if self._mongo_col is not None and self.run_id:
-            # Fire-and-forget: push the insert to a daemon thread so MongoDB
-            # latency / failures never block LLM callbacks or tool events.
-            doc = evt.to_dict()
-            doc["run_id"] = self.run_id
-            if self.flow_id:
-                doc["flow_id"] = self.flow_id
-            col = self._mongo_col
-
-            def _insert(d: dict = doc, c=col) -> None:
-                try:
-                    c.insert_one(d)
-                except Exception as exc:
-                    _py_logger.warning("RunLogger: MongoDB insert failed: %s", exc)
-
-            t = threading.Thread(target=_insert, daemon=True)
-            t.start()
+            try:
+                doc = evt.to_dict()
+                doc["run_id"] = self.run_id
+                if self.flow_id:
+                    doc["flow_id"] = self.flow_id
+                self._mongo_col.insert_one(doc)
+            except Exception as exc:
+                _py_logger.warning("RunLogger: MongoDB insert failed: %s", exc)
 
 
 # ──────────────────────────────────────────────────────────────────────────────
