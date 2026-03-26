@@ -141,8 +141,9 @@ class MessageBuffer:
         This prevents interim updates (like debate rounds) from counting as completed.
         """
         count = 0
+        # Optimized: Iterate over REPORT_SECTIONS and checking dict membership directly
         for section, (_, finalizing_agent) in self.REPORT_SECTIONS.items():
-            if self.report_sections.get(section) is not None:
+            if section in self.report_sections and self.report_sections[section] is not None:
                 if self.agent_status.get(finalizing_agent) == "completed":
                     count += 1
         return count
