@@ -1,8 +1,10 @@
 """yfinance-based scanner data fetching functions for market-wide analysis."""
 
 import yfinance as yf
+import requests
 from datetime import datetime
 from typing import Annotated
+from .finnhub_common import ThirdPartyTimeoutError
 
 
 def get_market_movers_yfinance(
@@ -69,6 +71,10 @@ def get_market_movers_yfinance(
         
         return result_str
         
+    except requests.exceptions.Timeout:
+        raise ThirdPartyTimeoutError(f"Request timed out fetching market movers")
+    except ThirdPartyTimeoutError:
+        raise
     except Exception as e:
         return f"Error fetching market movers for {category}: {str(e)}"
 
@@ -145,6 +151,10 @@ def get_market_indices_yfinance() -> str:
         
         return result_str
         
+    except requests.exceptions.Timeout:
+        raise ThirdPartyTimeoutError(f"Request timed out fetching market indices")
+    except ThirdPartyTimeoutError:
+        raise
     except Exception as e:
         return f"Error fetching market indices: {str(e)}"
 
@@ -229,6 +239,10 @@ def get_sector_performance_yfinance() -> str:
 
         return result_str
 
+    except requests.exceptions.Timeout:
+        raise ThirdPartyTimeoutError(f"Request timed out fetching sector performance")
+    except ThirdPartyTimeoutError:
+        raise
     except Exception as e:
         return f"Error fetching sector performance: {str(e)}"
 
@@ -326,6 +340,10 @@ def get_industry_performance_yfinance(
         
         return result_str
         
+    except requests.exceptions.Timeout:
+        raise ThirdPartyTimeoutError(f"Request timed out fetching industry performance")
+    except ThirdPartyTimeoutError:
+        raise
     except Exception as e:
         return f"Error fetching industry performance for sector '{sector_key}': {str(e)}"
 
@@ -386,5 +404,9 @@ def get_topic_news_yfinance(
         
         return result_str
         
+    except requests.exceptions.Timeout:
+        raise ThirdPartyTimeoutError(f"Request timed out fetching news for topic '{topic}'")
+    except ThirdPartyTimeoutError:
+        raise
     except Exception as e:
         return f"Error fetching news for topic '{topic}': {str(e)}"
