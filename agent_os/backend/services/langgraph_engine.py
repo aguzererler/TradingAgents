@@ -422,9 +422,9 @@ class LangGraphEngine:
                 if digest_content:
                     append_to_digest(date, "analyze", ticker, digest_content)
 
-                # Save analysts checkpoint (all 4 analyst reports populated)
+                # Save analysts checkpoint (any analyst report populated — social is optional)
                 _analyst_keys = ("market_report", "sentiment_report", "news_report", "fundamentals_report")
-                if all(final_state.get(k) for k in _analyst_keys):
+                if any(final_state.get(k) for k in _analyst_keys):
                     analysts_ckpt = {
                         "company_of_interest": ticker,
                         "trade_date": date,

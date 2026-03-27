@@ -1,5 +1,3 @@
-
-from tradingagents.agents.utils.tool_runner import run_tool_loop
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 
 from tradingagents.agents.utils.agent_utils import (
@@ -16,6 +14,7 @@ from tradingagents.agents.utils.fundamental_data_tools import (
     get_sector_relative,
     get_ttm_analysis,
 )
+from tradingagents.agents.utils.tool_runner import run_tool_loop
 
 
 def create_fundamentals_analyst(llm):
@@ -86,9 +85,34 @@ def create_fundamentals_analyst(llm):
             "driver, an FCF deviation from net income, or an unusual balance-sheet move — you "
             "may call `get_balance_sheet`, `get_cashflow`, or `get_income_statement` to examine "
             "the raw quarterly data directly.\n\n"
-            "Write a comprehensive report covering: multi-quarter revenue and margin trends, "
-            "TTM metrics, relative valuation vs peers, sector outperformance or underperformance, "
-            "and a clear medium-term fundamental thesis. "
+            "## CRITICAL ABORT TRIGGER\n\n"
+            "If you detect any of the following CATASTROPHIC conditions, you MUST immediately "
+            "prepend `[CRITICAL ABORT]` to your report and provide specific reasoning:\n\n"
+            "### Bankruptcy and Financial Distress:\n"
+            "- Bankruptcy filing or Chapter 11/7 proceedings\n"
+            "- Negative gross margins (gross margin < 0%)\n"
+            "- Negative operating margins (operating margin < 0%)\n"
+            "- Negative net income with no path to recovery\n"
+            "- Negative book value or negative equity\n"
+            "- Cash flow from operations < 0 with no turnaround plan\n\n"
+            "### SEC and Regulatory Issues:\n"
+            "- SEC enforcement action or investigation for material fraud\n"
+            "- Impending SEC delisting (notice of non-compliance)\n"
+            "- Going concern warning from auditor\n"
+            "- Regulatory shutdown or cease-and-desist order\n\n"
+            "### Material Fraud and Accounting Issues:\n"
+            "- Evidence of accounting manipulation or earnings management\n"
+            "- Revenue recognition violations\n"
+            "- Material restatement of financial statements\n"
+            "- Insider trading violations or SEC violations\n\n"
+            "### Format Requirements:\n"
+            "When triggering a critical abort, your report MUST start with:\n"
+            "`[CRITICAL ABORT] Reason: <specific reason for abort>`\n\n"
+            "Example: `[CRITICAL ABORT] Reason: Bankruptcy filing detected - negative gross margin of -15% with no path to recovery`\n\n"
+            "## Normal Operation\n\n"
+            "If no catastrophic conditions are detected, write a comprehensive report covering: "
+            "multi-quarter revenue and margin trends, TTM metrics, relative valuation vs peers, "
+            "sector outperformance or underperformance, and a clear medium-term fundamental thesis. "
             "Do not simply state trends are mixed — provide detailed, fine-grained analysis that "
             "identifies inflection points, acceleration or deceleration in growth, and specific "
             "risks and opportunities. "
