@@ -8,9 +8,20 @@ from tradingagents.agents.utils.json_utils import extract_json
 logger = logging.getLogger(__name__)
 
 
-def create_macro_synthesis(llm, max_scan_tickers: int = 10):
+def _format_horizon_label(scan_horizon_days: int) -> str:
+    if scan_horizon_days == 30:
+        return "1 month"
+    if scan_horizon_days == 60:
+        return "2 months"
+    if scan_horizon_days == 90:
+        return "3 months"
+    return f"{scan_horizon_days} days"
+
+
+def create_macro_synthesis(llm, max_scan_tickers: int = 10, scan_horizon_days: int = 30):
     def macro_synthesis_node(state):
         scan_date = state["scan_date"]
+        horizon_label = _format_horizon_label(scan_horizon_days)
 
         # Inject all previous reports for synthesis — no tools, pure LLM reasoning
         smart_money = state.get("smart_money_report", "") or "Not available"
@@ -24,6 +35,12 @@ def create_macro_synthesis(llm, max_scan_tickers: int = 10):
 
 ### Sector Performance Report:
 {state.get("sector_performance_report", "Not available")}
+
+### Factor Alignment Report:
+{state.get("factor_alignment_report", "Not available")}
+
+### Drift Opportunities Report:
+{state.get("drift_opportunities_report", "Not available")}
 
 ### Smart Money Report (Finviz institutional screeners):
 {smart_money}
@@ -49,7 +66,7 @@ def create_macro_synthesis(llm, max_scan_tickers: int = 10):
             "key_catalysts, and risks. "
             "Output your response as valid JSON matching this schema:\n"
             "{\n"
-            '  "timeframe": "1 month",\n'
+            f'  "timeframe": "{horizon_label}",\n'
             '  "executive_summary": "...",\n'
             '  "macro_context": { "economic_cycle": "...", "central_bank_stance": "...", "geopolitical_risks": [...] },\n'
             '  "key_themes": [{ "theme": "...", "description": "...", "conviction": "high|medium|low", "timeframe": "..." }],\n'

@@ -110,6 +110,9 @@ DEFAULT_CONFIG = {
     # in auto mode.  Portfolio holdings are always included regardless.
     # Set to 0 or leave unset for the default (10).
     "max_auto_tickers": _env_int("MAX_AUTO_TICKERS", 10),
+    # Scanner synthesis horizon in calendar days. 30/60/90 map cleanly to
+    # the 1–3 month search-graph variants.
+    "scan_horizon_days": _env_int("SCAN_HORIZON_DAYS", 30),
     # Data vendor configuration
     # Category-level configuration (default for all tools in category)
     "data_vendors": {
