@@ -9,7 +9,6 @@ All monetary values are ``float``.
 from __future__ import annotations
 
 import math
-import statistics
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -19,6 +18,29 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 # Core financial metrics
 # ---------------------------------------------------------------------------
+
+# Optimized: Pure-Python statistical helpers to avoid `statistics` module overhead
+def _mean(values: list[float]) -> float:
+    if not values:
+        raise ValueError("mean requires at least one data point")
+    return sum(values) / len(values)
+
+
+def _std(values: list[float], ddof: int = 1) -> float:
+    n = len(values)
+    if n <= ddof:
+        return 0.0
+    mu = _mean(values)
+    variance = sum((x - mu) ** 2 for x in values) / (n - ddof)
+    return math.sqrt(variance)
+
+
+def _pvariance(values: list[float]) -> float:
+    n = len(values)
+    if n == 0:
+        return 0.0
+    mu = _mean(values)
+    return sum((x - mu) ** 2 for x in values) / n
 
 
 def compute_returns(prices: list[float]) -> list[float]:
@@ -53,13 +75,10 @@ def sharpe_ratio(
     if len(returns) < 2:
         return None
     excess = [r - risk_free_daily for r in returns]
-    try:
-        std = statistics.stdev(excess)
-    except statistics.StatisticsError:
-        return None
+    std = _std(excess)
     if std == 0.0:
         return None
-    return (statistics.mean(excess) / std) * math.sqrt(252)
+    return (_mean(excess) / std) * math.sqrt(252)
 
 
 def sortino_ratio(
@@ -82,13 +101,10 @@ def sortino_ratio(
     downside = [r for r in excess if r < 0]
     if len(downside) < 2:
         return None
-    try:
-        downside_std = statistics.stdev(downside)
-    except statistics.StatisticsError:
-        return None
+    downside_std = _std(downside)
     if downside_std == 0.0:
         return None
-    return (statistics.mean(excess) / downside_std) * math.sqrt(252)
+    return (_mean(excess) / downside_std) * math.sqrt(252)
 
 
 def value_at_risk(
@@ -161,14 +177,17 @@ def beta(
         return None
     if len(asset_returns) < 2:
         return None
-    bm_var = statistics.pvariance(benchmark_returns)
+    bm_var = _pvariance(benchmark_returns)
     if bm_var == 0.0:
         return None
-    bm_mean = statistics.mean(benchmark_returns)
-    asset_mean = statistics.mean(asset_returns)
-    cov = statistics.mean(
-        [(a - asset_mean) * (b - bm_mean) for a, b in zip(asset_returns, benchmark_returns)]
-    )
+    bm_mean = _mean(benchmark_returns)
+    asset_mean = _mean(asset_returns)
+
+    # Optimized: covariance without statistics.mean
+    n = len(asset_returns)
+    cov = sum(
+        (a - asset_mean) * (b - bm_mean) for a, b in zip(asset_returns, benchmark_returns)
+    ) / n
     return cov / bm_var
 
 
@@ -205,27 +224,85 @@ def sector_concentration(
 # Aggregate risk computation
 # ---------------------------------------------------------------------------
 
+_SECTOR_ETFS: dict[str, str] = {
+    "technology": "XLK",
+    "healthcare": "XLV",
+    "financials": "XLF",
+    "energy": "XLE",
+    "consumer-discretionary": "XLY",
+    "consumer-staples": "XLP",
+    "industrials": "XLI",
+    "materials": "XLB",
+    "real-estate": "XLRE",
+    "utilities": "XLU",
+    "communication-services": "XLC",
+}
+
+_SECTOR_NORMALISE: dict[str, str] = {
+    "Technology": "technology",
+    "Healthcare": "healthcare",
+    "Health Care": "healthcare",
+    "Financial Services": "financials",
+    "Financials": "financials",
+    "Energy": "energy",
+    "Consumer Cyclical": "consumer-discretionary",
+    "Consumer Discretionary": "consumer-discretionary",
+    "Consumer Defensive": "consumer-staples",
+    "Consumer Staples": "consumer-staples",
+    "Industrials": "industrials",
+    "Basic Materials": "materials",
+    "Materials": "materials",
+    "Real Estate": "real-estate",
+    "Utilities": "utilities",
+    "Communication Services": "communication-services",
+}
 
 def compute_holding_risk(
     holding: "Holding",
     price_history: list[float],
+    price_histories: dict[str, list[float]] | None = None,
+    benchmark_prices: list[float] | None = None,
 ) -> dict[str, Any]:
     """Compute per-holding risk metrics.
 
     Args:
         holding: A Holding dataclass instance.
         price_history: Ordered list of historical closing prices for the ticker.
+        price_histories: Dict mapping ticker -> list of closing prices (used for proxy fallback).
+        benchmark_prices: Optional benchmark price series for ultimate fallback.
 
     Returns:
-        Dict with keys: ticker, sharpe, sortino, var_5pct, max_drawdown.
+        Dict with keys: ticker, sharpe, sortino, var_5pct, max_drawdown, is_proxy_risk.
     """
-    returns = compute_returns(price_history)
+    if price_histories is None:
+        price_histories = {}
+
+    is_proxy_risk = False
+    active_history = price_history
+
+    if len(active_history) < 30:
+        is_proxy_risk = True
+        sector_key = ""
+        if holding.sector:
+            sector_key = _SECTOR_NORMALISE.get(holding.sector, holding.sector.lower().replace(" ", "-"))
+
+        etf_ticker = _SECTOR_ETFS.get(sector_key)
+
+        if etf_ticker and etf_ticker in price_histories and len(price_histories[etf_ticker]) >= 30:
+            active_history = price_histories[etf_ticker]
+        elif "SPY" in price_histories and len(price_histories["SPY"]) >= 30:
+            active_history = price_histories["SPY"]
+        elif benchmark_prices and len(benchmark_prices) >= 30:
+            active_history = benchmark_prices
+
+    returns = compute_returns(active_history)
     return {
         "ticker": holding.ticker,
         "sharpe": sharpe_ratio(returns),
         "sortino": sortino_ratio(returns),
         "var_5pct": value_at_risk(returns),
-        "max_drawdown": max_drawdown(price_history),
+        "max_drawdown": max_drawdown(active_history),
+        "is_proxy_risk": is_proxy_risk,
     }
 
 
@@ -262,9 +339,26 @@ def compute_portfolio_risk(
     holding_returns: dict[str, list[float]] = {}
     holding_weights: dict[str, float] = {}
     for h in holdings:
-        if h.ticker not in price_histories or len(price_histories[h.ticker]) < 2:
+        h_history = price_histories.get(h.ticker, [])
+        active_history = h_history
+
+        if len(active_history) < 30:
+            sector_key = ""
+            if h.sector:
+                sector_key = _SECTOR_NORMALISE.get(h.sector, h.sector.lower().replace(" ", "-"))
+
+            etf_ticker = _SECTOR_ETFS.get(sector_key)
+            if etf_ticker and etf_ticker in price_histories and len(price_histories[etf_ticker]) >= 30:
+                active_history = price_histories[etf_ticker]
+            elif "SPY" in price_histories and len(price_histories["SPY"]) >= 30:
+                active_history = price_histories["SPY"]
+            elif benchmark_prices and len(benchmark_prices) >= 30:
+                active_history = benchmark_prices
+
+        if len(active_history) < 2:
             continue
-        rets = compute_returns(price_histories[h.ticker])
+
+        rets = compute_returns(active_history)
         holding_returns[h.ticker] = rets
         hv = (
             h.current_value
@@ -299,7 +393,12 @@ def compute_portfolio_risk(
 
     concentration = sector_concentration(holdings, total_value)
     holding_metrics = [
-        compute_holding_risk(h, price_histories.get(h.ticker, []))
+        compute_holding_risk(
+            h,
+            price_histories.get(h.ticker, []),
+            price_histories=price_histories,
+            benchmark_prices=benchmark_prices
+        )
         for h in holdings
     ]
 
