@@ -72,13 +72,27 @@ def sharpe_ratio(
         Annualized Sharpe ratio, or None if std-dev is zero or fewer than 2
         observations.
     """
-    if len(returns) < 2:
+    # Optimized: Compute mean and variance of excess returns in a single pass O(N)
+    n = len(returns)
+    if n < 2:
         return None
-    excess = [r - risk_free_daily for r in returns]
-    std = _std(excess)
-    if std == 0.0:
+
+    sum_ex = 0.0
+    sum_ex2 = 0.0
+
+    for r in returns:
+        ex = r - risk_free_daily
+        sum_ex += ex
+        sum_ex2 += ex * ex
+
+    mean_ex = sum_ex / n
+    variance = (sum_ex2 - sum_ex * mean_ex) / (n - 1)
+
+    if variance <= 0.0:
         return None
-    return (_mean(excess) / std) * math.sqrt(252)
+
+    std = math.sqrt(variance)
+    return (mean_ex / std) * math.sqrt(252)
 
 
 def sortino_ratio(
@@ -95,16 +109,37 @@ def sortino_ratio(
         Annualized Sortino ratio, or None when there are no downside returns
         or fewer than 2 observations.
     """
-    if len(returns) < 2:
+    # Optimized: Compute mean of excess and stddev of downside returns in a single pass O(N)
+    n = len(returns)
+    if n < 2:
         return None
-    excess = [r - risk_free_daily for r in returns]
-    downside = [r for r in excess if r < 0]
-    if len(downside) < 2:
+
+    sum_ex = 0.0
+    downside_sum = 0.0
+    downside_sum2 = 0.0
+    downside_count = 0
+
+    for r in returns:
+        ex = r - risk_free_daily
+        sum_ex += ex
+        if ex < 0:
+            downside_sum += ex
+            downside_sum2 += ex * ex
+            downside_count += 1
+
+    if downside_count < 2:
         return None
-    downside_std = _std(downside)
-    if downside_std == 0.0:
+
+    mean_ex = sum_ex / n
+    downside_mean = downside_sum / downside_count
+
+    downside_variance = (downside_sum2 - downside_sum * downside_mean) / (downside_count - 1)
+
+    if downside_variance <= 0.0:
         return None
-    return (_mean(excess) / downside_std) * math.sqrt(252)
+
+    downside_std = math.sqrt(downside_variance)
+    return (mean_ex / downside_std) * math.sqrt(252)
 
 
 def value_at_risk(
@@ -173,22 +208,32 @@ def beta(
         Beta as a float, or None when lengths mismatch, are too short, or
         benchmark variance is zero.
     """
-    if len(asset_returns) != len(benchmark_returns):
-        return None
-    if len(asset_returns) < 2:
-        return None
-    bm_var = _pvariance(benchmark_returns)
-    if bm_var == 0.0:
-        return None
-    bm_mean = _mean(benchmark_returns)
-    asset_mean = _mean(asset_returns)
-
-    # Optimized: covariance without statistics.mean
+    # Optimized: Compute covariance and benchmark variance in a single pass O(N)
     n = len(asset_returns)
-    cov = sum(
-        (a - asset_mean) * (b - bm_mean) for a, b in zip(asset_returns, benchmark_returns)
-    ) / n
-    return cov / bm_var
+    if n != len(benchmark_returns) or n < 2:
+        return None
+
+    sum_a = 0.0
+    sum_b = 0.0
+    sum_ab = 0.0
+    sum_b2 = 0.0
+
+    for a, b in zip(asset_returns, benchmark_returns):
+        sum_a += a
+        sum_b += b
+        sum_ab += a * b
+        sum_b2 += b * b
+
+    mean_a = sum_a / n
+    mean_b = sum_b / n
+
+    cov = (sum_ab / n) - (mean_a * mean_b)
+    var_b = (sum_b2 / n) - (mean_b * mean_b)
+
+    if var_b <= 0.0:
+        return None
+
+    return cov / var_b
 
 
 def sector_concentration(
