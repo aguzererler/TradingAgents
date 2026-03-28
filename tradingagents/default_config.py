@@ -127,6 +127,8 @@ DEFAULT_CONFIG = {
     "tool_vendors": {
         # Finnhub free tier provides same data + MSPR aggregate bonus signal
         "get_insider_transactions": "finnhub",
+        # Finviz has a native Gap Up filter; yfinance is OHLC approximation only
+        "get_gap_candidates": "finviz",
     },
     # Report storage backend
     # When mongo_uri is set, reports are persisted in MongoDB (never overwritten).

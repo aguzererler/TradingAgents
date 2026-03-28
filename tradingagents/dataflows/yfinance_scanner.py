@@ -7,7 +7,12 @@ import requests
 import yfinance as yf
 from yfinance import EquityQuery
 
+import logging
+
 from .finnhub_common import ThirdPartyTimeoutError
+from .stockstats_utils import YFinanceError
+
+logger = logging.getLogger(__name__)
 
 
 def get_market_movers_yfinance(
@@ -87,15 +92,22 @@ def get_market_movers_yfinance(
 
 def get_gap_candidates_yfinance() -> str:
     """
-    Compute real gap candidates from live yfinance screener quotes.
+    Compute real gap candidates from live yfinance screener quotes (fallback approximation).
+
+    NOTE: This is a fallback for when Finviz is unavailable. It uses OHLC math
+    (open-vs-prev-close) rather than a native gap filter, so results are less
+    precise than the Finviz implementation.
 
     Uses a bounded universe from DAY_GAINERS and MOST_ACTIVES, then calculates
-    gap percentage from today's open versus the previous close. This is a real
-    market-data gap calculation, not a news heuristic.
+    gap percentage from today's open versus the previous close.
 
     Returns:
         Markdown table of bounded gap candidates with liquidity confirmation.
     """
+    logger.warning(
+        "get_gap_candidates: falling back to yfinance OHLC approximation — "
+        "results are less precise than Finviz native gap filter"
+    )
     try:
         universe = {}
         for screener_key in ("DAY_GAINERS", "MOST_ACTIVES"):
@@ -192,7 +204,7 @@ def get_gap_candidates_yfinance() -> str:
     except ThirdPartyTimeoutError:
         raise
     except Exception as e:
-        return f"Error fetching live gap candidates: {str(e)}"
+        raise YFinanceError(f"Error fetching live gap candidates: {str(e)}") from e
 
 
 def get_gatekeeper_universe_yfinance(limit: int = 25) -> str:
@@ -264,7 +276,7 @@ def get_gatekeeper_universe_yfinance(limit: int = 25) -> str:
     except ThirdPartyTimeoutError:
         raise
     except Exception as e:
-        return f"Error fetching gatekeeper universe: {str(e)}"
+        raise YFinanceError(f"Error fetching gatekeeper universe: {str(e)}") from e
 
 
 def get_market_indices_yfinance() -> str:

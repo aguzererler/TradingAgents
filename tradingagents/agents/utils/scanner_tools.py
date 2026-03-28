@@ -60,23 +60,15 @@ def get_gatekeeper_universe() -> str:
 @tool
 def get_gap_candidates() -> str:
     """
-    Get the Finviz gap-up subset of the gatekeeper universe.
-    Hardcoded to the exact gatekeeper filter plus Gap Up 5%, so the model
-    cannot hallucinate Finviz filter names or options.
+    Get gap-up candidates from the gatekeeper universe.
+    Primary: Finviz native Gap Up 5% filter (exact, requires finvizfinance).
+    Fallback: yfinance OHLC approximation (open-vs-prev-close, less precise
+    but always available).
 
     Returns:
-        str: Formatted list of Finviz gap candidates
+        str: Formatted table of gap candidates with price and volume data
     """
-    return _run_finviz_screen(
-        {
-            "Market Cap.": "+Mid (over $2bln)",
-            "Net Profit Margin": "Positive (>0%)",
-            "Average Volume": "Over 2M",
-            "Price": "Over $5",
-            "Gap": "Up 5%",
-        },
-        label="gatekeeper_gap",
-    )
+    return route_to_vendor("get_gap_candidates")
 
 
 @tool

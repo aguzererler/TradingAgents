@@ -43,6 +43,7 @@ from .alpha_vantage_scanner import (
 from .alpha_vantage_common import AlphaVantageError, AlphaVantageRateLimitError, RateLimitError
 from .finnhub_common import FinnhubError
 from .stockstats_utils import YFinanceError
+from .finviz_scanner import get_gap_candidates_finviz
 from .finnhub_news import get_insider_transactions as get_finnhub_insider_transactions
 from .finnhub_scanner import (
     get_market_indices_finnhub,
@@ -112,6 +113,7 @@ VENDOR_LIST = [
     "yfinance",
     "alpha_vantage",
     "finnhub",
+    "finviz",
 ]
 
 # Methods where cross-vendor fallback is safe (data contracts are fungible).
@@ -177,7 +179,8 @@ VENDOR_METHODS = {
         "yfinance": get_gatekeeper_universe_yfinance,
     },
     "get_gap_candidates": {
-        "yfinance": get_gap_candidates_yfinance,
+        "finviz": get_gap_candidates_finviz,    # primary: native gap filter
+        "yfinance": get_gap_candidates_yfinance, # fallback: OHLC approximation
     },
     "get_market_indices": {
         "finnhub": get_market_indices_finnhub,

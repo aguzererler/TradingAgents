@@ -13,6 +13,9 @@ _TICKER_STOPWORDS = {
     "A", "I", "AI", "AN", "AND", "ARE", "AS", "AT", "BE", "BY", "END", "ETF",
     "GDP", "GICS", "JSON", "LOW", "NFP", "NOT", "NOW", "OIL", "ONLY", "OR",
     "THE", "TO", "USD", "VIX", "YTD", "CPI", "PPI", "EPS", "CEO", "CFO", "N/A",
+    # Exchange codes that appear in the gatekeeper universe report's Exchange column
+    # (EquityQuery "is-in" filter values: NMS=NASDAQ, NYQ=NYSE, ASE=AMEX)
+    "NMS", "NYQ", "ASE",
 }
 
 

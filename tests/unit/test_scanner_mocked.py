@@ -892,11 +892,13 @@ class TestFinvizSmartMoneyTools:
         amd_pos = result.find("AMD")
         assert nvda_pos < amd_pos, "NVDA (higher volume) should appear before AMD"
 
-    def test_get_gap_candidates_uses_gatekeeper_gap_label(self):
+    def test_get_gap_candidates_returns_finviz_table(self):
         from tradingagents.agents.utils.scanner_tools import get_gap_candidates
 
         mock_cls = self._mock_overview(_make_finviz_df())
         with patch("finvizfinance.screener.overview.Overview", mock_cls):
             result = get_gap_candidates.invoke({})
 
-        assert "gatekeeper_gap" in result
+        # Result should come from the Finviz vendor implementation
+        assert "Gap Candidates" in result
+        assert "NVDA" in result
